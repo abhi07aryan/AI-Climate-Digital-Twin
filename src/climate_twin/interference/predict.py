@@ -18,7 +18,7 @@ def main():
     DATASET = "data/processed/climate_up.nc"
     MODEL = "models/convlstm_up_best.pth"
 
-    WINDOW_SIZE = 7
+    WINDOW_SIZE = 30
 
     FEATURES = [
         "rainfall",
