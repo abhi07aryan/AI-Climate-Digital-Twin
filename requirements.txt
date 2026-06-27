@@ -1,0 +1,14 @@
+numpy
+pandas
+xarray
+geopandas
+regionmask
+rioxarray
+rasterio
+matplotlib
+scikit-learn
+netCDF4
+pyyaml
+torch
+torchvision
+jupyter

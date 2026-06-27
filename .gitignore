@@ -1,0 +1,32 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Virtual environments
+.venv/
+venv/
+
+# VS Code
+.vscode/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Climate datasets
+data/raw/
+data/interim/
+data/processed/
+
+# NetCDF
+*.nc
+
+# NumPy
+*.npy
+
+# PyTorch
+*.pt
+*.pth
+
+# Logs
+*.log
