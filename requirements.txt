@@ -1,14 +1,29 @@
-numpy
-pandas
-xarray
-geopandas
-regionmask
-rioxarray
-rasterio
-matplotlib
-scikit-learn
-netCDF4
-pyyaml
-torch
-torchvision
-jupyter
+# Core scientific computing
+numpy>=1.26
+pandas>=2.2
+scipy>=1.13
+
+# Machine Learning
+torch>=2.3
+torchvision>=0.18
+torchaudio>=2.3
+scikit-learn>=1.5
+
+# Climate & Geospatial
+xarray>=2024.6.0
+netCDF4>=1.7
+rioxarray>=0.17
+rasterio>=1.4
+geopandas>=1.0
+shapely>=2.0
+pyproj>=3.6
+fiona>=1.9
+
+# Visualization
+matplotlib>=3.9
+
+# Progress bars
+tqdm>=4.66
+
+# YAML configuration
+PyYAML>=6.0
