@@ -1,42 +1,45 @@
 import numpy as np
+import xarray as xr
 
 
 class SequenceBuilder:
 
-    def __init__(self, window=30):
+    def __init__(self, window_size=30, target="rainfall"):
 
-        self.window = window
+        self.window_size = window_size
+        self.target = target
 
-    def create(self, ds, target="rainfall"):
+    def build(self, ds: xr.Dataset):
 
-        X = []
+        features = list(ds.data_vars)
 
-        y = []
+        X = ds[features].to_array()
 
-        values = ds.to_array().values
+        X = X.transpose(
+            "time",
+            "lat",
+            "lon",
+            "variable"
+        )
 
-        values = np.moveaxis(values, 0, -1)
+        X = X.values
 
-        for i in range(
+        y = ds[self.target].values
 
-            len(ds.time) - self.window
+        X_seq = []
+        y_seq = []
 
-        ):
+        for i in range(len(ds.time) - self.window_size):
 
-            X.append(
-
-                values[
-                    i:i+self.window
-                ]
-
+            X_seq.append(
+                X[i:i + self.window_size]
             )
 
-            y.append(
-
-                ds[target]
-                .isel(time=i+self.window)
-                .values
-
+            y_seq.append(
+                y[i + self.window_size]
             )
 
-        return np.array(X), np.array(y)
+        return (
+            np.array(X_seq),
+            np.array(y_seq)
+        )

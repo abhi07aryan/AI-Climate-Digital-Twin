@@ -1,33 +1,34 @@
-from sklearn.preprocessing import StandardScaler
-import numpy as np
+import xarray as xr
 
 
 class ClimateNormalizer:
 
     def __init__(self):
-        self.scalers = {}
+        self.stats = {}
 
-    def fit_transform(self, ds, variables):
+    def fit(self, ds: xr.Dataset, variables):
+
+        for var in variables:
+
+            self.stats[var] = {
+                "mean": ds[var].mean(skipna=True),
+                "std": ds[var].std(skipna=True)
+            }
+
+    def transform(self, ds: xr.Dataset):
 
         ds = ds.copy()
 
-        for variable in variables:
+        for var, stat in self.stats.items():
 
-            data = ds[variable].values
-
-            mask = np.isnan(data)
-
-            valid = data[~mask].reshape(-1, 1)
-
-            scaler = StandardScaler()
-
-            valid_scaled = scaler.fit_transform(valid)
-
-            data_scaled = data.copy()
-            data_scaled[~mask] = valid_scaled.ravel()
-
-            ds[variable].values = data_scaled
-
-            self.scalers[variable] = scaler
+            ds[var] = (
+                ds[var] - stat["mean"]
+            ) / stat["std"]
 
         return ds
+
+    def fit_transform(self, ds: xr.Dataset, variables):
+
+        self.fit(ds, variables)
+
+        return self.transform(ds)
