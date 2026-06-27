@@ -1,111 +1,239 @@
 import xarray as xr
 import torch
-import torch.nn as nn
 import torch.optim as optim
-
 from torch.utils.data import DataLoader
 
 from climate_twin.preprocessing.split import TimeSeriesSplit
 from climate_twin.preprocessing.normalize import ClimateNormalizer
+
 from climate_twin.ml.dataset import ClimateTorchDataset
+
 from climate_twin.models.convlstm import ConvLSTM
+from climate_twin.models.losses import MaskedMSELoss
+
 from climate_twin.training.trainer import Trainer
 
-print("Loading climate dataset...")
 
-climate = xr.open_dataset("data/processed/climate_up.nc")
+def main():
 
-print("Splitting dataset...")
+    # --------------------------------------------------------
+    # Configuration
+    # --------------------------------------------------------
 
-splitter = TimeSeriesSplit()
+    DATASET = "data/processed/climate_up.nc"
 
-train, valid, test = splitter.split(climate)
+    WINDOW_SIZE = 7          # Use 30
+    BATCH_SIZE = 4           # 8 if RAM allows
+    HIDDEN_CHANNELS = 8      # Use 32
+    EPOCHS = 2               # Use 20
+    LEARNING_RATE = 1e-3
 
-print("Normalizing...")
+    # FEATURES = [
+    #     "rainfall",
+    #     "tmax",
+    #     "tmin",
+    #     "temp_mean",
+    #     "temp_range",
+    #     "rain_7day",
+    #     "rain_30day",
+    #     "rain_lag1",
+    #     "rain_lag3",
+    #     "rain_lag7",
+    #     "month",
+    #     "season",
+    #     "dayofyear",
+    #     "rain_anomaly"
+    # ]
 
-variables = [
-    "rainfall",
-    "tmax",
-    "tmin",
-    "temp_mean",
-    "temp_range",
-    "rain_7day",
-    "rain_30day"
-]
+    FEATURES = [
+        "rainfall",
+        "tmax",
+        "tmin"
+    ]
 
-normalizer = ClimateNormalizer()
-normalizer.fit(train, variables)
-train = normalizer.transform(train)
-valid = normalizer.transform(valid)
-test = normalizer.transform(test)
+    # NORMALIZE = [
+    #     "rainfall",
+    #     "tmax",
+    #     "tmin",
+    #     "temp_mean",
+    #     "temp_range",
+    #     "rain_7day",
+    #     "rain_30day"
+    # ]
 
-features = [
-    "rainfall",
-    "tmax",
-    "tmin",
-    "temp_mean",
-    "temp_range",
-    "rain_7day",
-    "rain_30day",
-    "rain_lag1",
-    "rain_lag3",
-    "rain_lag7",
-    "month",
-    "season",
-    "dayofyear",
-    "rain_anomaly"
-]
+    NORMALIZE = [
+        "rainfall",
+        "tmax",
+        "tmin",
+    ]
 
-train_dataset = ClimateTorchDataset(
-    train,
-    input_features=features,
-    target="rainfall")
+    # --------------------------------------------------------
+    # Device
+    # --------------------------------------------------------
 
-valid_dataset = ClimateTorchDataset(
-    valid,
-    input_features=features,
-    target="rainfall")
+    device = torch.device(
+        "cuda" if torch.cuda.is_available() else "cpu"
+    )
 
-test_dataset = ClimateTorchDataset(
-    test,
-    input_features=features,
-    target="rainfall")
+    print(f"\nUsing device : {device}\n")
 
-train_loader = DataLoader(
-    train_dataset,
-    batch_size=4,
-    shuffle=True)
+    # --------------------------------------------------------
+    # Load Dataset
+    # --------------------------------------------------------
 
-valid_loader = DataLoader(
-    valid_dataset,
-    batch_size=4,
-    shuffle=False)
+    print("Loading dataset...")
 
-test_loader = DataLoader(test_dataset, 
-                         batch_size=4, 
-                         shuffle=False)
+    climate = xr.open_dataset(DATASET)
 
-device = torch.device("cuda" 
-                      if torch.cuda.is_available()
-                        else "cpu")
-print(device)
+    # --------------------------------------------------------
+    # Split
+    # --------------------------------------------------------
 
-model = ConvLSTM(input_channels=len(features),
-                  hidden_channels=32,
-                  output_channels=1)
-optimizer = optim.Adam(model.parameters(), lr = 1e-3)
-criterion = nn.MSELoss()
-trainer = Trainer(model, optimizer, criterion, device)
+    splitter = TimeSeriesSplit()
 
-EPOCHS = 20
+    train, valid, test = splitter.split(climate)
 
-for epoch in range(EPOCHS):
-    train_loss = trainer.train_epoch(train_loader)
-    valid_loss = trainer.validate(valid_loader)
-    print(f"Epoch {epoch+1}/{EPOCHS}")
-    print(f"Train Loss : {train_loss:.4f}")
-    print(f"Valid Loss : {valid_loss:.4f}")
+    # --------------------------------------------------------
+    # Development Mode
+    # --------------------------------------------------------
 
-torch.save(model.state_dict(), "models/convlstm_up.pth")
+    train = train.isel(time=slice(0,365))
+    valid = valid.isel(time=slice(0,100))
+    test  = test.isel(time=slice(0,100))
 
-print("Model saved.")
+    # --------------------------------------------------------
+    # Normalize
+    # --------------------------------------------------------
+
+    normalizer = ClimateNormalizer()
+
+    normalizer.fit(
+        train,
+        NORMALIZE
+    )
+
+    train = normalizer.transform(train)
+    valid = normalizer.transform(valid)
+    test = normalizer.transform(test)
+
+    # --------------------------------------------------------
+    # PyTorch Datasets
+    # --------------------------------------------------------
+
+    train_dataset = ClimateTorchDataset(
+        train,
+        input_features=FEATURES,
+        target="rainfall",
+        window_size=WINDOW_SIZE
+    )
+
+    valid_dataset = ClimateTorchDataset(
+        valid,
+        input_features=FEATURES,
+        target="rainfall",
+        window_size=WINDOW_SIZE
+    )
+
+    test_dataset = ClimateTorchDataset(
+        test,
+        input_features=FEATURES,
+        target="rainfall",
+        window_size=WINDOW_SIZE
+    )
+
+    print(f"Train samples : {len(train_dataset)}")
+    print(f"Valid samples : {len(valid_dataset)}")
+    print(f"Test samples  : {len(test_dataset)}")
+
+    # --------------------------------------------------------
+    # DataLoaders
+    # --------------------------------------------------------
+
+    train_loader = DataLoader(
+        train_dataset,
+        batch_size=BATCH_SIZE,
+        shuffle=True
+    )
+
+    valid_loader = DataLoader(
+        valid_dataset,
+        batch_size=BATCH_SIZE,
+        shuffle=False
+    )
+
+    # --------------------------------------------------------
+    # Model
+    # --------------------------------------------------------
+
+    model = ConvLSTM(
+        input_channels=len(FEATURES),
+        hidden_channels=HIDDEN_CHANNELS,
+        output_channels=1
+    )
+
+    # --------------------------------------------------------
+    # Optimizer
+    # --------------------------------------------------------
+
+    optimizer = optim.Adam(
+        model.parameters(),
+        lr=LEARNING_RATE
+    )
+
+    # --------------------------------------------------------
+    # Loss
+    # --------------------------------------------------------
+
+    criterion = MaskedMSELoss()
+
+    # --------------------------------------------------------
+    # Trainer
+    # --------------------------------------------------------
+
+    trainer = Trainer(
+        model,
+        optimizer,
+        criterion,
+        device
+    )
+
+    # --------------------------------------------------------
+    # Training Loop
+    # --------------------------------------------------------
+
+    best_loss = float("inf")
+
+    for epoch in range(EPOCHS):
+
+        train_loss = trainer.train_epoch(train_loader)
+
+        valid_loss = trainer.validate(valid_loader)
+
+        print(
+            f"Epoch {epoch+1:02d}/{EPOCHS}"
+        )
+
+        print(
+            f"Train Loss : {train_loss:.6f}"
+        )
+
+        print(
+            f"Valid Loss : {valid_loss:.6f}"
+        )
+
+        # Save best model
+
+        if valid_loss < best_loss:
+
+            best_loss = valid_loss
+
+            torch.save(
+                model.state_dict(),
+                "models/convlstm_up_best.pth"
+            )
+
+            print("Best model saved.\n")
+
+
+if __name__ == "__main__":
+    main()

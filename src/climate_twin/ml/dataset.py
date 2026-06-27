@@ -44,13 +44,14 @@ class ClimateTorchDataset(Dataset):
 
     def __getitem__(self, idx):
 
-        x = self.X[
-            idx:idx+self.window
-        ]
+        x = np.nan_to_num(
+            self.X[idx:idx+self.window],
+            nan=0.0
+        )
 
-        y = self.y[
-            idx+self.window
-        ]
-
+        y = np.nan_to_num(
+            self.y[idx+self.window],
+            nan=0.0
+        )
         return (torch.tensor(x, dtype=torch.float32),
             torch.tensor(y, dtype=torch.float32).unsqueeze(0))
