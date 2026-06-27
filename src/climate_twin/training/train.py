@@ -22,50 +22,54 @@ def main():
 
     DATASET = "data/processed/climate_up.nc"
 
-    WINDOW_SIZE = 7          # Use 30
-    BATCH_SIZE = 4           # 8 if RAM allows
-    HIDDEN_CHANNELS = 8      # Use 32
-    EPOCHS = 2               # Use 20
+    WINDOW_SIZE = 30          # Use 7
+    BATCH_SIZE = 8            # 8 if RAM allows
+    HIDDEN_CHANNELS = 32      # Use 8
+    EPOCHS = 30               # Use 2
     LEARNING_RATE = 1e-3
-
-    # FEATURES = [
-    #     "rainfall",
-    #     "tmax",
-    #     "tmin",
-    #     "temp_mean",
-    #     "temp_range",
-    #     "rain_7day",
-    #     "rain_30day",
-    #     "rain_lag1",
-    #     "rain_lag3",
-    #     "rain_lag7",
-    #     "month",
-    #     "season",
-    #     "dayofyear",
-    #     "rain_anomaly"
-    # ]
 
     FEATURES = [
         "rainfall",
         "tmax",
-        "tmin"
+        "tmin",
+        "temp_mean",
+        "temp_range",
+        "rain_7day",
+        "rain_30day",
+        "rain_lag1",
+        "rain_lag3",
+        "rain_lag7",
+        "month",
+        "season",
+        "dayofyear",
+        "rain_anomaly"
     ]
 
-    # NORMALIZE = [
+    # FEATURES = [
     #     "rainfall",
     #     "tmax",
-    #     "tmin",
-    #     "temp_mean",
-    #     "temp_range",
-    #     "rain_7day",
-    #     "rain_30day"
+    #     "tmin"
     # ]
 
     NORMALIZE = [
         "rainfall",
         "tmax",
         "tmin",
+        "temp_mean",
+        "temp_range",
+        "rain_7day",
+        "rain_30day",
+        "rain_lag1",
+        "rain_lag3",
+        "rain_lag7",
+        "rain_anomaly"
     ]
+
+    # NORMALIZE = [
+    #     "rainfall",
+    #     "tmax",
+    #     "tmin",
+    # ]
 
     # --------------------------------------------------------
     # Device
@@ -97,9 +101,9 @@ def main():
     # Development Mode
     # --------------------------------------------------------
 
-    train = train.isel(time=slice(0,365))
-    valid = valid.isel(time=slice(0,100))
-    test  = test.isel(time=slice(0,100))
+    # train = train.isel(time=slice(0,365))
+    # valid = valid.isel(time=slice(0,100))
+    # test  = test.isel(time=slice(0,100))
 
     # --------------------------------------------------------
     # Normalize
