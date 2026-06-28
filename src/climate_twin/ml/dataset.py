@@ -13,7 +13,7 @@ class ClimateTorchDataset(Dataset):
         ds,
         input_features,
         target="rainfall",
-        window_size=30,
+        window_size=7,
     ):
 
         self.window = window_size

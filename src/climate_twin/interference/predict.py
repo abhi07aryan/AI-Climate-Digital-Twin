@@ -18,7 +18,7 @@ def main():
     DATASET = "data/processed/climate_up.nc"
     MODEL = "models/convlstm_up_best.pth"
 
-    WINDOW_SIZE = 7
+    WINDOW_SIZE = 30
 
     FEATURES = [
         "rainfall",
@@ -36,6 +36,12 @@ def main():
         "dayofyear",
         "rain_anomaly"
     ]
+    
+    # FEATURES = [
+    #     "rainfall",
+    #     "tmax",
+    #     "tmin"
+    # ]
 
     NORMALIZE = [
         "rainfall",
@@ -50,6 +56,12 @@ def main():
         "rain_lag7",
         "rain_anomaly"
     ]
+
+    # NORMALIZE = [
+    #     "rainfall",
+    #     "tmax",
+    #     "tmin",
+    # ]
 
     # --------------------------------------------------------
     # Device

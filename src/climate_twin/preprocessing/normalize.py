@@ -32,3 +32,15 @@ class ClimateNormalizer:
         self.fit(ds, variables)
 
         return self.transform(ds)
+    
+    def inverse_transform(self, ds):
+        
+        ds = ds.copy()
+
+        for var, stat in self.stats.items():
+
+            ds[var] = (
+                ds[var] * stat["std"]
+            ) + stat["mean"]
+
+        return ds
