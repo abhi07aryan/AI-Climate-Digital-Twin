@@ -69,6 +69,8 @@ class ConvLSTM(nn.Module):
             kernel_size=1
         )
 
+        self.dropout = nn.Dropout2d(0.2)
+
     def forward(self, x):
 
         batch, seq, channels, H, W = x.shape
@@ -93,4 +95,5 @@ class ConvLSTM(nn.Module):
                 c
             )
 
+        h = self.dropout(h)
         return self.output(h)

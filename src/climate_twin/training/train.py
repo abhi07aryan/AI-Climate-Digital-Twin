@@ -26,10 +26,10 @@ def main():
 
     DATASET = "data/processed/climate_up.nc"
 
-    WINDOW_SIZE = 7           # 7/30
+    WINDOW_SIZE = 30          # 7/30
     BATCH_SIZE = 4            # 8 if RAM allows
     HIDDEN_CHANNELS = 8       # 8/32
-    EPOCHS = 15               # 2/30
+    EPOCHS = 30               # 2/30
     LEARNING_RATE = 1e-3
 
     # FEATURES = [
@@ -209,18 +209,14 @@ def main():
     # Training Loop
     # --------------------------------------------------------
 
-    best_loss = float("inf")
 
     scheduler =  build_scheduler(optimizer)
 
     checkpoint = ModelCheckpoint("models/convlstm_best.pth")
 
-    start_epoch, best_loss = checkpoint.load(
-        model,
-        optimizer,
-        scheduler,
-        device
-    )
+    start_epoch = 0
+    best_loss = float("inf")
+
     early_stopping = EarlyStopping(patience=5, min_delta=1e-4)
     
     history = TrainingHistory()
@@ -242,42 +238,45 @@ def main():
         train_loss = trainer.train_epoch(train_loader)
         valid_loss = trainer.validate(valid_loader)
         scheduler.step(valid_loss)
-        print(f"Epoch {epoch+1:02d}/{EPOCHS}")
-        print(f"Train Loss : {train_loss:.6f}")
-        print(f"Valid Loss : {valid_loss:.6f}")
-
-        checkpoint.save(
-            model,
-            optimizer,
-            scheduler,
-            epoch,
-            valid_loss
-        )
-
-        if early_stopping(valid_loss):
-            print("Early stopping.")
-            break
-
-        # Save best model
+        print(f"Epoch [{epoch+1}/{EPOCHS}] "
+              f"| Train: {train_loss:.6f} "
+              f"| Valid: {valid_loss:.6f}")
 
         if valid_loss < best_loss:
 
             best_loss = valid_loss
 
-            torch.save(model.state_dict(), "models/convlstm_up_best.pth")
+            checkpoint.save(
+                model,
+                optimizer,
+                scheduler,
+                epoch,
+                best_loss
+            )
 
-            print("Best model saved.\n")
+            print("Best checkpoint saved.\n")
+
+        if early_stopping(valid_loss):
+            print("Early stopping.")
+            break
 
         current_lr = optimizer.param_groups[0]["lr"]
+        print(f"Learning Rate : {current_lr:.6f}")
+
         history.update(
             epoch + 1,
             train_loss,
             valid_loss,
             current_lr
         )
-        print(f"Learning Rate : {current_lr:.6f}")
     history.save_csv()
     history.plot()
+    print("\n==============================")
+    print("Training Complete")
+    print("==============================")
+    print(f"Best Validation Loss : {best_loss:.6f}")
+    print("Checkpoint : models/convlstm_best.pth")
+    print("History saved successfully.")
 
 
 if __name__ == "__main__":

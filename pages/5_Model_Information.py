@@ -5,7 +5,7 @@ st.set_page_config(
     layout="wide"
 )
 
-st.title("🧠 Model Information")
+st.title("Model Information")
 
 st.header("Overview")
 

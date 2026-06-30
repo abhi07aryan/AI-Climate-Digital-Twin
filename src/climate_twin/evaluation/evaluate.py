@@ -1,5 +1,6 @@
 from pathlib import Path
 
+from matplotlib import pyplot as plt
 import numpy as np
 import pandas as pd
 import torch
@@ -23,18 +24,58 @@ DATASET = "data/processed/climate_up.nc"
 
 MODEL = "models/convlstm_best.pth"
 
-WINDOW_SIZE = 7
+WINDOW_SIZE = 30
 
 FEATURES = [
-    "rainfall",
-    "tmax",
-    "tmin"
-]
+        "rainfall",
+        "tmax",
+        "tmin"]
+    #     "temp_mean",
+    #     "temp_range",
+    #     "rain_7day",
+    #     "rain_30day",
+    #     "rain_lag1",
+    #     "rain_lag3",
+    #     "rain_lag7",
+    #     "month",
+    #     "season",
+    #     "dayofyear",
+    #     "rain_anomaly"
+    # ]
 
 DEVICE = torch.device(
     "cuda" if torch.cuda.is_available() else "cpu"
 )
 
+MC_SAMPLES = 30
+
+def mc_predict(model, x, samples=MC_SAMPLES):
+
+    model.train()      # Enable dropout
+
+    predictions = []
+
+    with torch.no_grad():
+
+        for _ in range(samples):
+
+            pred = model(x)
+
+            predictions.append(
+                pred.cpu().numpy()
+            )
+
+    predictions = np.stack(predictions)
+
+    mean = predictions.mean(axis=0)
+
+    std = predictions.std(axis=0)
+
+    confidence = np.exp(
+        -std.mean()
+    ) * 100
+
+    return mean, std, confidence
 
 def main():
 
@@ -74,7 +115,7 @@ def main():
     print("\nLoading model...")
 
     model = ConvLSTM(
-        input_channels=3,
+        input_channels=len(FEATURES),
         hidden_channels=8,
         output_channels=1
     )
@@ -98,10 +139,15 @@ def main():
     # Evaluation
     # =====================================================
 
-    rmse_scores = []
-    mae_scores = []
-    r2_scores = []
-    corr_scores = []
+    first_truth = None
+    first_prediction = None
+    first_uncertainty = None
+
+    all_rmse = []
+    all_mae = []
+    all_corr = []
+    all_confidence = []
+    all_uncertainty = []
 
     first_truth = None
     first_prediction = None
@@ -114,9 +160,15 @@ def main():
 
             X = X.unsqueeze(0).to(DEVICE)
 
-            pred = model(X)
+            prediction, uncertainty, confidence = mc_predict(
+                model,
+                X,
+                samples=MC_SAMPLES
+            )
 
-            prediction = pred.squeeze().cpu().numpy()
+            prediction = prediction.squeeze()
+
+            uncertainty = uncertainty.squeeze()
 
             truth = y.squeeze().numpy()
 
@@ -126,98 +178,180 @@ def main():
 
                 first_prediction = prediction
 
-            rmse_scores.append(
-                ClimateMetrics.rmse(
-                    truth,
-                    prediction
-                )
+                first_uncertainty = uncertainty
+
+            # -----------------------------------------
+            # Compute metrics
+            # -----------------------------------------
+
+            difference = prediction - truth
+
+            rmse = np.sqrt(
+                np.mean(difference ** 2)
             )
 
-            mae_scores.append(
-                ClimateMetrics.mae(
-                    truth,
-                    prediction
-                )
+            mae = np.mean(
+                np.abs(difference)
             )
 
-            r2_scores.append(
-                ClimateMetrics.r2(
-                    truth,
-                    prediction
-                )
+            correlation = np.corrcoef(
+                truth.flatten(),
+                prediction.flatten()
+            )[0, 1]
+
+            # -----------------------------------------
+            # Store metrics
+            # -----------------------------------------
+
+            all_rmse.append(rmse)
+
+            all_mae.append(mae)
+
+            all_corr.append(correlation)
+
+            all_confidence.append(confidence)
+
+            all_uncertainty.append(
+                uncertainty.mean()
             )
 
-            corr_scores.append(
-                ClimateMetrics.pearson(
-                    truth,
-                    prediction
-                )
-            )
 
-    # =====================================================
-    # Average Metrics
-    # =====================================================
-
-    avg_rmse = np.mean(rmse_scores)
-    avg_mae = np.mean(mae_scores)
-    avg_r2 = np.mean(r2_scores)
-    avg_corr = np.mean(corr_scores)
-
-    print("=" * 45)
-    print("Evaluation Results")
-    print("=" * 45)
-
-    print(f"Average RMSE : {avg_rmse:.4f}")
-    print(f"Average MAE  : {avg_mae:.4f}")
-    print(f"Average R^2   : {avg_r2:.4f}")
-    print(f"Correlation  : {avg_corr:.4f}")
+    print(f"Average RMSE        : {np.mean(all_rmse):.4f}")
+    print(f"Average MAE         : {np.mean(all_mae):.4f}")
+    print(f"Average Correlation : {np.mean(all_corr):.4f}")
+    print(f"Average Confidence  : {np.mean(all_confidence):.2f}%")
+    print(f"Average Uncertainty : {np.mean(all_uncertainty):.4f}")
 
     print("=" * 45)
 
-    # =====================================================
+    # -------------------------------------------------------
     # Save Results
-    # =====================================================
-
-    output_dir = Path("results/evaluation")
-
-    output_dir.mkdir(
+    # -------------------------------------------------------
+    from pathlib import Path
+    RESULTS = Path("results")
+    
+    RESULTS.mkdir(
         parents=True,
         exist_ok=True
     )
 
-    metrics = pd.DataFrame({
-        "RMSE": [avg_rmse],
-        "MAE": [avg_mae],
-        "R2": [avg_r2],
-        "Correlation": [avg_corr]
-    })
+    # -------------------------------------------------------
+    # Ground Truth
+    # -------------------------------------------------------
 
-    metrics.to_csv(
-        output_dir / "metrics.csv",
+    plt.figure(figsize=(6,6))
+
+    plt.imshow(
+        first_truth,
+        cmap="Blues"
+    )
+
+    plt.colorbar()
+
+    plt.axis("off")
+
+    plt.title("Ground Truth")
+
+    plt.savefig(
+        RESULTS / "ground_truth.png",
+        dpi=200,
+        bbox_inches="tight"
+    )
+
+    plt.close()
+
+    # -------------------------------------------------------
+    # Prediction
+    # -------------------------------------------------------
+
+    plt.figure(figsize=(6,6))
+
+    plt.imshow(
+        first_prediction,
+        cmap="Blues"
+    )
+
+    plt.colorbar()
+
+    plt.axis("off")
+
+    plt.title("Prediction")
+
+    plt.savefig(
+        RESULTS / "prediction.png",
+        dpi=200,
+        bbox_inches="tight"
+    )
+
+    plt.close()
+
+    # -------------------------------------------------------
+    # Difference
+    # -------------------------------------------------------
+
+    plt.figure(figsize=(6,6))
+
+    plt.imshow(
+        first_prediction - first_truth,
+        cmap="RdBu_r"
+    )
+
+    plt.colorbar()
+
+    plt.axis("off")
+
+    plt.title("Prediction Error")
+
+    plt.savefig(
+        RESULTS / "difference.png",
+        dpi=200,
+        bbox_inches="tight"
+    )
+
+    plt.close()
+
+    # -------------------------------------------------------
+    # Uncertainty
+    # -------------------------------------------------------
+
+    plt.figure(figsize=(6,6))
+
+    plt.imshow(
+        first_uncertainty,
+        cmap="inferno"
+    )
+
+    plt.colorbar()
+
+    plt.axis("off")
+
+    plt.title("Prediction Uncertainty")
+
+    plt.savefig(
+        RESULTS / "uncertainty.png",
+        dpi=200,
+        bbox_inches="tight"
+    )
+
+    plt.close()
+
+    metrics = {
+        "Average RMSE": np.mean(all_rmse),
+        "Average MAE": np.mean(all_mae),
+        "Average Correlation": np.mean(all_corr),
+        "Average Confidence (%)": np.mean(all_confidence),
+        "Average Uncertainty": np.mean(all_uncertainty)
+    }
+
+    import pandas as pd
+
+    pd.DataFrame(
+        metrics.items(),
+        columns=["Metric", "Value"]
+    ).to_csv(
+        RESULTS / "metrics.csv",
         index=False
     )
-
-    ClimatePlots.prediction(
-        first_truth,
-        first_prediction,
-        save_path=output_dir / "prediction.png"
-    )
-
-    ClimatePlots.error(
-        first_truth,
-        first_prediction,
-        save_path=output_dir / "error.png"
-    )
-
-    ClimatePlots.histogram(
-        first_truth,
-        first_prediction,
-        save_path=output_dir / "histogram.png"
-    )
-
-    print("\nResults saved successfully!")
-
-    print(output_dir.resolve())
 
 
 if __name__ == "__main__":

@@ -16,7 +16,7 @@ st.set_page_config(
     layout="wide"
 )
 
-st.title("📊 Climate Data Explorer")
+st.title("Climate Data Explorer")
 
 # --------------------------------------------------
 # Load Dataset
@@ -81,11 +81,27 @@ VARIABLE_INFO = {
         "Numerical encoding of the meteorological season (Winter, Pre-Monsoon, Monsoon, or Post-Monsoon)."
 }
 
-variables = sorted([
+# Preferred display order
+preferred_order = [
+    "rainfall",
+    "tmax",
+    "tmin",
+    "temp_mean",
+    "temp_range",
+    "rain_7day",
+    "rain_anomaly",
+    "rain_lag1",
+    "rain_lag3",
+    "rain_lag7",
+    "season"
+]
+
+# Keep only variables that actually exist
+variables = [
     var
-    for var in ds.data_vars
-    if var not in exclude
-])
+    for var in preferred_order
+    if var in ds.data_vars and var not in exclude
+]
 
 variable = st.sidebar.selectbox(
     "Variable",
@@ -290,6 +306,18 @@ elif data.ndim == 1:
             f"{values[time_index]:.3f}"
         )
 
+with st.expander("What do these statistics mean?"):
+
+    st.markdown("""
+    **Mean:** Average value across all grid cells for the selected date.
+
+    **Maximum:** Largest value observed in the selected map.
+
+    **Minimum:** Smallest value observed in the selected map.
+
+    **Standard Deviation:** Indicates how much the values vary spatially. A larger standard deviation means greater variability across the region.
+    """)
+
 # --------------------------------------------------
 # Dataset Information
 # --------------------------------------------------
@@ -302,7 +330,7 @@ c1, c2, c3 = st.columns(3)
 
 c1.metric(
     "Variables",
-    len(ds.data_vars)
+    len(ds.data_vars) 
 )
 
 c2.metric(
