@@ -2,11 +2,11 @@ import streamlit as st
 
 st.set_page_config(
     page_title="AI Climate Digital Twin",
-    page_icon="🌦️",
+    page_icon=" ",
     layout="wide"
 )
 
-st.title("🌦️ AI Climate Digital Twin")
+st.title("AI Climate Digital Twin")
 
 st.markdown(
 """
