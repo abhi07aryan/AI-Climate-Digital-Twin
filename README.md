@@ -1,4 +1,4 @@
-# AI-Powered Digital Twin of India's Climate
+# AGNI (Agricultural & Geographical Neural Intelligence) - AI-Powered Digital Twin of India's Climate
 
 ## Objective
 
