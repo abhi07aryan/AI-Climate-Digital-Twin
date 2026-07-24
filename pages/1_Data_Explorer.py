@@ -4,6 +4,54 @@ import matplotlib.pyplot as plt
 import numpy as np
 import streamlit as st
 import xarray as xr
+import pandas as pd
+
+# Colormap for each variable
+CMAPS = {
+    # Rainfall variables
+    "rainfall": "Blues",
+    "rain_lag1": "Blues",
+    "rain_lag3": "Blues",
+    "rain_lag7": "Blues",
+    "rain_7day": "Blues",
+    "rain_anomaly": "RdBu_r",
+
+    # Temperature variables
+    "tmax": "coolwarm",
+    "tmin": "coolwarm",
+    "temp_mean": "coolwarm",
+    "temp_range": "plasma",
+    "season": "tab10"
+}
+
+COLOR_LIMITS = {
+    "rainfall": (0, 60),
+    "rain_lag1": (0, 60),
+    "rain_lag3": (0, 60),
+    "rain_lag7": (0, 60),
+    "rain_7day": (0, 150),
+    "rain_anomaly": (-20, 20),
+
+    "tmax": (20, 45),
+    "tmin": (5, 30),
+    "temp_mean": (15, 40),
+    "temp_range": (5, 25),
+}
+
+LABELS = {
+    "rainfall": "Rainfall (mm/day)",
+    "rain_lag1": "Rainfall (1-day lag) (mm/day)",
+    "rain_lag3": "Rainfall (3-day lag) (mm/day)",
+    "rain_lag7": "Rainfall (7-day lag) (mm/day)",
+    "rain_7day": "7-Day Rainfall (mm)",
+    "rain_anomaly": "Rainfall Anomaly (mm/day)",
+
+    "tmax": "Maximum Temperature (°C)",
+    "tmin": "Minimum Temperature (°C)",
+    "temp_mean": "Mean Temperature (°C)",
+    "temp_range": "Temperature Range (°C)",
+    "season": "Season",
+}
 
 # --------------------------------------------------
 # Configuration
@@ -28,60 +76,17 @@ def load_dataset():
 
 ds = load_dataset()
 
-# --------------------------------------------------
-# Sidebar
-# --------------------------------------------------
-
-st.sidebar.header("Explorer")
-
 variables = sorted(list(ds.data_vars))
 
-# Variables to hide
+# --------------------------------------------------
+# Variables
+# --------------------------------------------------
+
 exclude = {
     "month",
-    "dayofyear"
+    "dayofyear",
 }
 
-VARIABLE_INFO = {
-
-    "rainfall":
-        "Daily observed rainfall (mm). Primary target variable used for training and forecasting.",
-
-    "tmax":
-        "Daily maximum surface air temperature (°C), representing the warmest part of the day.",
-
-    "tmin":
-        "Daily minimum surface air temperature (°C), representing the coolest part of the day.",
-
-    "temp_mean":
-        "Mean daily temperature computed as the average of Tmax and Tmin, representing overall daily thermal conditions.",
-
-    "temp_range":
-        "Difference between Tmax and Tmin, indicating the daily temperature variability.",
-
-    "rain_7day":
-        "Rolling 7-day accumulated rainfall, capturing recent precipitation trends and antecedent wetness.",
-
-    "rain_30day":
-        "Rolling 30-day accumulated rainfall, capturing recent precipitation trends and antecedent wetness.",
-
-    "rain_lag1":
-        "Rainfall observed one day before the current date. Used to capture short-term temporal dependencies.",
-
-    "rain_lag3":
-        "Rainfall observed three days before the current date. Helps model medium-term rainfall persistence.",
-
-    "rain_lag7":
-        "Rainfall observed seven days before the current date, representing weekly rainfall memory.",
-
-    "rain_anomaly":
-        "Difference between observed rainfall and its long-term climatological average, highlighting unusually wet or dry conditions.",
-
-    "season":
-        "Numerical encoding of the meteorological season (Winter, Pre-Monsoon, Monsoon, or Post-Monsoon)."
-}
-
-# Preferred display order
 preferred_order = [
     "rainfall",
     "tmax",
@@ -93,78 +98,125 @@ preferred_order = [
     "rain_lag1",
     "rain_lag3",
     "rain_lag7",
-    "season"
+    "season",
 ]
 
-# Keep only variables that actually exist
+VARIABLE_VALIDITY = {
+    "rainfall": 0,
+    "tmax": 0,
+    "tmin": 0,
+    "temp_mean": 0,
+    "temp_range": 0,
+    "rain_lag1": 1,
+    "rain_lag3": 3,
+    "rain_lag7": 7,
+    "rain_7day": 7,
+    "rain_anomaly": 30,   # Adjust if your anomaly uses a different window
+    "season": 0,
+}
+
+VAR_DESCRIPTIONS = {
+    "rainfall": "Daily observed rainfall (mm/day).",
+    "tmax": "Daily maximum air temperature (°C).",
+    "tmin": "Daily minimum air temperature (°C).",
+    "temp_mean": "Average daily temperature computed from Tmax and Tmin (°C).",
+    "temp_range": "Difference between Tmax and Tmin (°C).",
+    "rain_lag1": "Rainfall recorded one day before the selected date (mm/day).",
+    "rain_lag3": "Rainfall recorded three days before the selected date (mm/day).",
+    "rain_lag7": "Rainfall recorded seven days before the selected date (mm/day).",
+    "rain_7day": "Cumulative rainfall over the previous seven days (mm).",
+    "rain_anomaly": "Deviation of daily rainfall from its climatological average (mm/day).",
+    "season": "Meteorological season corresponding to the selected date."
+}
+
+available_dates = pd.to_datetime(ds.time.values).date
+
+st.subheader("Climate Data Explorer")
+
+col1, col2, col3, col4 = st.columns(
+    [3, 3, 1.5, 1.5],
+    vertical_alignment="bottom"
+)
+
+# -----------------------------
+# Date Selector
+# -----------------------------
+with col2:
+    selected_date = st.date_input(
+        "Date",
+        value=available_dates[0],
+        min_value=available_dates[0],
+        max_value=available_dates[-1],
+        key="selected_date"
+    )
+
+days_since_start = (
+    pd.Timestamp(selected_date)
+    - pd.Timestamp(ds.time.values[0])
+).days
+
+# -----------------------------
+# Valid Variables
+# -----------------------------
 variables = [
     var
     for var in preferred_order
-    if var in ds.data_vars and var not in exclude
+    if (
+        var in ds.data_vars
+        and var not in exclude
+        and days_since_start >= VARIABLE_VALIDITY.get(var, 0)
+    )
 ]
 
-variable = st.sidebar.selectbox(
-    "Variable",
-    variables
-)
-
-st.markdown("### Variable Description")
-
-st.success(
-    VARIABLE_INFO.get(
-        variable,
-        "No description available."
-    )
-)
-
-import pandas as pd
-
-# Available dates in dataset
-available_dates = pd.to_datetime(ds.time.values).date
-
-selected_date = st.sidebar.date_input(
-    "Select Date",
-    value=available_dates[0],
-    min_value=available_dates[0],
-    max_value=available_dates[-1]
-)
-
-# Convert selected date to dataset index
-try:
-    time_index = np.where(available_dates == selected_date)[0][0]
-except IndexError:
-    st.error("Selected date is not available in the dataset.")
+if not variables:
+    st.warning("No variables are available for the selected date.")
     st.stop()
 
-cmap = st.sidebar.selectbox(
-    "Colormap",
-    [
-        "Blues",
-        "viridis",
-        "plasma",
-        "coolwarm",
-        "terrain"
-    ]
-)
+# -----------------------------
+# Variable Selector
+# -----------------------------
+with col1:
+    variable = st.selectbox(
+        "Parameter",
+        variables,
+        key="parameter"
+    )
 
-show_hist = st.sidebar.checkbox(
-    "Show Histogram",
-    True
-)
+# -----------------------------
+# Display Options
+# -----------------------------
+with col3:
+    show_stats = st.checkbox(
+        "Statistics",
+        value=True,
+        key="show_stats"
+    )
 
-show_stats = st.sidebar.checkbox(
-    "Show Statistics",
-    True
-)
+with col4:
+    show_hist = st.checkbox(
+        "Histogram",
+        value=True,
+        key="show_hist"
+    )
 
-# --------------------------------------------------
-# Variable
-# --------------------------------------------------
+# -----------------------------
+# Time Index
+# -----------------------------
+try:
+    time_index = available_dates.tolist().index(selected_date)
+except ValueError:
+    st.error("Selected date is not available.")
+    st.stop()
 
 data = ds[variable]
 
 st.subheader(variable)
-
+st.caption(
+    VAR_DESCRIPTIONS.get(
+        variable,
+        "No description available for this variable."
+    )
+)
 st.caption(
     f"Date : {str(ds.time.values[time_index])[:10]}"
 )
@@ -172,83 +224,109 @@ st.caption(
 # --------------------------------------------------
 # Spatial Variables
 # --------------------------------------------------
+cmap_name = CMAPS.get(variable, "viridis")
+vmin, vmax = COLOR_LIMITS.get(variable, (None, None))
+
+STREAMLIT_BG = "#0E1117"
 
 if data.ndim == 3:
 
     image = data.isel(time=time_index)
 
-    fig, ax = plt.subplots(figsize=(8, 6))
+    cmap = plt.get_cmap(cmap_name).copy()
+    cmap.set_bad(STREAMLIT_BG)
 
-    im = ax.imshow(
-        image.values,
+    mask = np.isfinite(image.values)
+
+    lat = ds.lat.values
+    lon = ds.lon.values
+
+    valid_rows = np.where(mask.any(axis=1))[0]
+    valid_cols = np.where(mask.any(axis=0))[0]
+
+    extent = [
+        lon[valid_cols[0]],
+        lon[valid_cols[-1]],
+        lat[valid_rows[0]],
+        lat[valid_rows[-1]]
+    ]
+
+    fig, ax = plt.subplots(
+        figsize=(6, 5),
+        facecolor=STREAMLIT_BG
+    )
+
+    ax.set_facecolor(STREAMLIT_BG)
+
+    lon2d, lat2d = np.meshgrid(
+        lon[valid_cols[0]:valid_cols[-1]+1],
+        lat[valid_rows[0]:valid_rows[-1]+1]
+    )
+
+    im = ax.pcolormesh(
+        lon2d,
+        lat2d,
+        image.values[
+            valid_rows[0]:valid_rows[-1]+1,
+            valid_cols[0]:valid_cols[-1]+1
+        ],
         cmap=cmap,
-        origin="lower",
-        extent=[
-            float(ds.lon.min()),
-            float(ds.lon.max()),
-            float(ds.lat.min()),
-            float(ds.lat.max())
-        ]
+        shading="auto",
+        vmin=vmin,
+        vmax=vmax,
     )
+    ax.set_xlim(75.8, 85.7)
+    ax.set_ylim(23.2, 31.0)
+    ax.set_xlabel("Longitude (°E)", color="white")
+    ax.set_ylabel("Latitude (°N)", color="white")
+    ax.tick_params(colors="white")
 
-    ax.set_xlabel("Longitude")
-    ax.set_ylabel("Latitude")
-    ax.set_title(variable)
+    for spine in ax.spines.values():
+        spine.set_visible(False)
 
-    plt.colorbar(
-        im,
-        ax=ax,
-        shrink=0.8,
-        label=variable
-    )
+    label = LABELS.get(variable, variable)
+    ax.set_title(label, color="white")
+    cbar = plt.colorbar(im, ax=ax, shrink=0.85)
+    cbar.set_label(label, color="white")
+    cbar.ax.tick_params(colors="white")
+    plt.setp(cbar.ax.get_yticklabels(), color="white")
+    cbar.outline.set_edgecolor("white")
+
+    plt.tight_layout()
 
     st.pyplot(fig)
-
+    
     if show_stats:
-
         st.subheader("Statistics")
-
         c1, c2, c3, c4 = st.columns(4)
-
         values = image.values
-
-        c1.metric(
-            "Mean",
-            f"{np.nanmean(values):.3f}"
-        )
-
-        c2.metric(
-            "Maximum",
-            f"{np.nanmax(values):.3f}"
-        )
-
-        c3.metric(
-            "Minimum",
-            f"{np.nanmin(values):.3f}"
-        )
-
-        c4.metric(
-            "Std Dev",
-            f"{np.nanstd(values):.3f}"
-        )
+        c1.metric("Mean", f"{np.nanmean(values):.3f}")
+        c2.metric("Maximum", f"{np.nanmax(values):.3f}")
+        c3.metric("Minimum", f"{np.nanmin(values):.3f}")
+        c4.metric("Std Dev", f"{np.nanstd(values):.3f}")
 
     if show_hist:
-
         st.subheader("Distribution")
-
-        fig, ax = plt.subplots(figsize=(8,4))
-
+        fig, ax = plt.subplots(
+            figsize=(8,4),
+            facecolor=STREAMLIT_BG
+        )
+        ax.set_facecolor(STREAMLIT_BG)
+        values = image.values
+        values = values[np.isfinite(values)]
         ax.hist(
-            image.values.flatten(),
+            values,
             bins=50,
             color="steelblue"
         )
-
-        ax.set_xlabel(variable)
-        ax.set_ylabel("Frequency")
-
+        ax.grid(linestyle="--",alpha=0.2,color="white")
+        ax.tick_params(colors="white")
+        ax.set_xlabel(variable, color="white")
+        ax.set_ylabel("Frequency", color="white")
+        for spine in ax.spines.values():
+            spine.set_visible(False)
         st.pyplot(fig)
-
+        
 # --------------------------------------------------
 # Time Variables
 # --------------------------------------------------
@@ -323,31 +401,8 @@ with st.expander("What do these statistics mean?"):
 # --------------------------------------------------
 
 st.divider()
-
 st.subheader("Dataset Information")
-
-c1, c2, c3 = st.columns(3)
-
-c1.metric(
-    "Variables",
-    len(ds.data_vars) 
-)
-
-c2.metric(
-    "Time Steps",
-    len(ds.time)
-)
-
-c3.metric(
-    "Grid Size",
-    f"{len(ds.lat)} × {len(ds.lon)}"
-)
-
-st.write("Available Variables")
-
-st.dataframe(
-    {
-        "Variable": list(ds.data_vars.keys())
-    },
-    use_container_width=True
-)
+c1, c2, c3 = st.columns(3) 
+c1.metric( "Variables", len(ds.data_vars) )
+c2.metric( "Time Steps", len(ds.time) ) 
+c3.metric( "Grid Size", f"{len(ds.lat)} × {len(ds.lon)}" )
