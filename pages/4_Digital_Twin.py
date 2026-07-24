@@ -5,6 +5,7 @@ import numpy as np
 import streamlit as st
 import torch
 import xarray as xr
+import pandas as pd
 
 from climate_twin.models.convlstm import ConvLSTM
 from climate_twin.preprocessing.normalize import ClimateNormalizer
@@ -21,7 +22,7 @@ from climate_twin.forecasting.recursive_forecast import RecursiveForecaster
 
 DATASET = "data/processed/climate_up.nc"
 
-MODEL = "models/convlstm_best.pth"
+MODEL = "models/convlstm_up_best.pth"
 
 WINDOW_SIZE = 30
 
@@ -75,9 +76,7 @@ def load_model():
         map_location=DEVICE
     )
 
-    model.load_state_dict(
-        checkpoint["model_state_dict"]
-    )
+    model.load_state_dict(checkpoint)
 
     model.to(DEVICE)
 
@@ -170,30 +169,76 @@ model = load_model()
 
 dataset, test = load_dataset()
 
+lat = test.lat.values
+lon = test.lon.values
+
+def plot_map(data, title, cmap, vmin=None, vmax=None):
+
+    mask = np.isfinite(data)
+
+    mask = np.isfinite(test.rainfall.isel(time=0).values)
+
+    valid_rows = np.where(mask.any(axis=1))[0]
+    valid_cols = np.where(mask.any(axis=0))[0]
+
+    r0, r1 = valid_rows[0], valid_rows[-1] + 1
+    c0, c1 = valid_cols[0], valid_cols[-1] + 1
+
+    lat_plot = lat[r0:r1]
+    lon_plot = lon[c0:c1]
+    data_plot = data[r0:r1, c0:c1]
+    
+    if len(valid_rows) == 0 or len(valid_cols) == 0:
+        fig, ax = plt.subplots(figsize=(5, 5))
+        ax.text(
+            0.5,
+            0.5,
+            "No valid data",
+            ha="center",
+            va="center"
+        )
+        ax.axis("off")
+        return fig
+    lat_plot = lat[valid_rows[0]:valid_rows[-1] + 1]
+    lon_plot = lon[valid_cols[0]:valid_cols[-1] + 1]
+
+    data_plot = data[
+        valid_rows[0]:valid_rows[-1] + 1,
+        valid_cols[0]:valid_cols[-1] + 1
+    ]
+
+    lon2d, lat2d = np.meshgrid(lon_plot, lat_plot)
+
+    fig, ax = plt.subplots(figsize=(5, 5))
+
+    im = ax.pcolormesh(
+        lon2d,
+        lat2d,
+        data_plot,
+        cmap=cmap,
+        shading="auto",
+        vmin=vmin,
+        vmax=vmax
+    )
+
+    plt.colorbar(im, ax=ax)
+
+    ax.set_xlabel("Longitude")
+    ax.set_ylabel("Latitude")
+    ax.set_title(title)
+    ax.set_aspect("equal")
+    fig.tight_layout()
+    return fig
+
 # ----------------------------------------------------
-# Sidebar
+# Simulation Settings
 # ----------------------------------------------------
 
-st.sidebar.header("Simulation Settings")
-
-import pandas as pd
-
-# Load test dates
+st.subheader("Simulation Settings")
 
 forecast_dates = pd.to_datetime(
     test.time.values[WINDOW_SIZE:]
 ).date
-
-selected_date = st.sidebar.date_input(
-    "Forecast Date",
-    value=forecast_dates[0],
-    min_value=forecast_dates[0],
-    max_value=forecast_dates[-1]
-)
-
-sample = np.where(
-    forecast_dates == selected_date
-)[0][0]
 
 forecast_options = {
     "1 Day": 1,
@@ -202,40 +247,67 @@ forecast_options = {
     "7 Days": 7
 }
 
-selected = st.sidebar.selectbox(
-    "Forecast Horizon",
-    list(forecast_options.keys())
-)
+c1, c2, c3 = st.columns([2, 1, 1])
+
+with c1:
+    selected_date = st.date_input(
+        "Forecast Date",
+        value=forecast_dates[0],
+        min_value=forecast_dates[0],
+        max_value=forecast_dates[-1]
+    )
+
+with c2:
+    selected = st.selectbox(
+        "Forecast Horizon",
+        list(forecast_options.keys())
+    )
+
+with c3:
+    mc_samples = st.selectbox(
+        "MC Samples",
+        [10, 20, 30, 50],
+        index=2
+    )
+
+# -------------------------------
+# Row 2
+# -------------------------------
+
+c4, c5 = st.columns(2)
+
+with c4:
+    temperature = st.slider(
+        "Temperature Change (°C)",
+        min_value=-2.0,
+        max_value=2.0,
+        value=0.0,
+        step=0.5,
+        format="%.1f °C"
+    )
+
+with c5:
+    rainfall = st.slider(
+        "Rainfall Multiplier",
+        min_value=0.5,
+        max_value=2.0,
+        value=1.0,
+        step=0.1,
+        format="%.1f×"
+    )
 
 forecast_days = forecast_options[selected]
 
-temperature = st.sidebar.slider(
-    "Temperature Change",
-    -2.0,
-    2.0,
-    0.0,
-    0.5
+st.write("")
+
+run = st.button(
+    "Run Simulation",
+    use_container_width=True
 )
 
-rainfall = st.sidebar.slider(
-    "Rainfall Multiplier",
-    0.5,
-    2.0,
-    1.0,
-    0.1
-)
+st.divider()
 
-mc_samples = st.sidebar.selectbox(
-    "Monte Carlo Samples",
-    [10, 20, 30, 50],
-    index=2
-)
-
-run = st.sidebar.button("Run Simulation")
-
-st.sidebar.markdown("---")
-
-with st.sidebar.expander("Simulation Guide", expanded=False):
+with st.expander("Simulation Guide"):
 
     st.markdown("""
 ### Forecast Date
@@ -283,6 +355,11 @@ The dashboard then compares both forecasts and highlights the impact of the simu
 
 if run:
 
+    forecast_days = forecast_options[selected]
+    # Find the selected date in the dataset
+    sample = np.where(
+        forecast_dates == selected_date
+    )[0][0]
     X, y = dataset[sample]
 
     sequence = X.numpy()
@@ -381,18 +458,13 @@ if run:
 
         st.subheader("Baseline")
 
-        fig, ax = plt.subplots(figsize=(5,5))
-
-        im = ax.imshow(
+        fig = plot_map(
             base,
+            "Baseline",
             cmap="Blues",
             vmin=vmin,
             vmax=vmax
         )
-
-        plt.colorbar(im)
-
-        ax.axis("off")
 
         st.pyplot(fig)
 
@@ -400,39 +472,27 @@ if run:
 
         st.subheader("Scenario")
 
-        fig, ax = plt.subplots(figsize=(5,5))
-
-        im = ax.imshow(
+        fig = plot_map(
             scen,
+            "Scenerio",
             cmap="Blues",
             vmin=vmin,
             vmax=vmax
         )
-
-        plt.colorbar(im)
-
-        ax.axis("off")
 
         st.pyplot(fig)
 
     with c3:
 
         st.subheader("Difference")
-
-        fig, ax = plt.subplots(figsize=(5,5))
-
-        limit = np.max(np.abs(diff))
-
-        im = ax.imshow(
+        limit = np.nanmax(np.abs(diff))
+        fig = plot_map(
             diff,
+            "Difference",
             cmap="RdBu_r",
             vmin=-limit,
             vmax=limit
         )
-
-        plt.colorbar(im)
-
-        ax.axis("off")
 
         st.pyplot(fig)
 
@@ -444,35 +504,29 @@ if run:
 
     with u1:
 
-        st.markdown("### Baseline Uncertainty")
+        st.subheader("Baseline Uncertainty")
 
-        fig, ax = plt.subplots(figsize=(5,5))
-
-        im = ax.imshow(
+        fig = plot_map(
             base_uncertainty,
-            cmap="inferno"
+            "Baseline Uncertainty",
+            cmap="inferno",
+            vmin=0,
+            vmax=np.nanmax(base_uncertainty)
         )
-
-        plt.colorbar(im)
-
-        ax.axis("off")
 
         st.pyplot(fig)
 
     with u2:
 
-        st.markdown("### Scenario Uncertainty")
+        st.subheader("Scenario Uncertainty")
 
-        fig, ax = plt.subplots(figsize=(5,5))
-
-        im = ax.imshow(
+        fig = plot_map(
             scenario_uncertainty,
-            cmap="inferno"
+            "Scenario Uncertainty",
+            cmap="inferno",
+            vmin=0,
+            vmax=np.nanmax(scenario_uncertainty)
         )
-
-        plt.colorbar(im)
-
-        ax.axis("off")
 
         st.pyplot(fig)
     with st.expander("What does Prediction Uncertainty mean?"):

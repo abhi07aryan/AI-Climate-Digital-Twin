@@ -585,23 +585,55 @@ st.divider()
 
 st.subheader("Prediction Distribution")
 
-fig, ax = plt.subplots(figsize=(8,4))
+fig, ax = plt.subplots(figsize=(8,4), facecolor=STREAMLIT_BG)
 
-values = prediction[np.isfinite(prediction)]
+fig.patch.set_facecolor(STREAMLIT_BG)
+ax.set_facecolor(STREAMLIT_BG)
 
-ax.hist(values, bins=40)
+ax.hist(
+    prediction.flatten(),
+    bins=40,
+    edgecolor="white",
+    color="#4C9BE8"
+)
 
-ax.set_xlabel("Predicted Rainfall")
+# White title and labels
+ax.set_title(
+    "Distribution of Predicted Rainfall",
+    color="white",
+    fontsize=16
+)
 
-ax.set_ylabel("Grid Cells")
+ax.set_xlabel(
+    "Predicted Rainfall (mm/day)",
+    color="white",
+    fontsize=12
+)
 
-ax.set_title("Distribution of Predicted Rainfall")
+ax.set_ylabel(
+    "Grid Cells",
+    color="white",
+    fontsize=12
+)
 
-left, center, right = st.columns([1, 4, 1])
+# White tick labels
+ax.tick_params(
+    axis="both",
+    colors="white",
+    labelsize=11
+)
 
-with center:
-    st.pyplot(fig)
+# White spines
+for spine in ax.spines.values():
+    spine.set_color("white")
 
+# Light grid
+ax.grid(
+    alpha=0.25,
+    color="white"
+)
+
+st.pyplot(fig)
 plt.close(fig)
 
 # ---------------------------------------------------------
