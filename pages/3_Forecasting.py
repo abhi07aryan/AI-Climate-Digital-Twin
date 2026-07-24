@@ -18,7 +18,7 @@ from climate_twin.ml.dataset import ClimateTorchDataset
 # ---------------------------------------------------------
 
 DATASET = Path("data/processed/climate_up.nc")
-MODEL = Path("models/convlstm_best.pth")
+MODEL = Path("models/convlstm_up_best.pth")
 
 WINDOW_SIZE = 30
 
@@ -117,11 +117,13 @@ def load_dataset():
         test.time.values[WINDOW_SIZE:]
     ).date
 
-    return dataset, forecast_dates
+    return dataset, forecast_dates, test
 
 model = load_model()
 
-dataset, forecast_dates = load_dataset()
+dataset, forecast_dates, test_ds = load_dataset()
+lat = test_ds.lat.values
+lon = test_ds.lon.values
 
 # ---------------------------------------------------------
 # Monte Carlo Dropout
@@ -133,71 +135,146 @@ def mc_predict(
     samples=MC_SAMPLES
 ):
 
-    model.train()
+    model.eval()
+
+    for m in model.modules():
+        if isinstance(m, torch.nn.Dropout):
+            m.train()
 
     predictions = []
 
     with torch.no_grad():
-
         for _ in range(samples):
-
             pred = model(x)
-
-            predictions.append(
-                pred.squeeze().cpu().numpy()
-            )
+            predictions.append(pred.squeeze().cpu().numpy())
 
     predictions = np.stack(predictions)
 
     mean_prediction = predictions.mean(axis=0)
-
     std_prediction = predictions.std(axis=0)
+    confidence = np.exp(-std_prediction.mean()) * 100
 
-    confidence = np.exp(
-        -std_prediction.mean()
-    ) * 100
+    return mean_prediction, std_prediction, confidence
 
-    return (
-        mean_prediction,
-        std_prediction,
-        confidence
+STREAMLIT_BG = "#0E1117"
+
+def plot_map(data, title, cmap, vmin=None, vmax=None, center=None, label=""):
+
+    data = np.ma.masked_invalid(data)
+
+    if isinstance(cmap, str):
+        cmap = plt.get_cmap(cmap).copy()
+
+    cmap.set_bad(STREAMLIT_BG)
+    fig, ax = plt.subplots(
+        figsize=(6, 5),
+        facecolor=STREAMLIT_BG
     )
+
+    ax.set_facecolor(STREAMLIT_BG)
+
+    if center is None:
+        im = ax.pcolormesh(
+            lon,
+            lat,
+            data,
+            cmap=cmap,
+            shading="auto",
+            vmin=vmin,
+            vmax=vmax
+        )
+    else:
+        limit = max(abs(vmin), abs(vmax))
+
+        im = ax.pcolormesh(
+            lon,
+            lat,
+            data,
+            cmap=cmap,
+            shading="auto",
+            vmin=-limit,
+            vmax=limit,
+        )
+
+    ax.set_title(title, color="white", fontsize=14)
+    ax.set_xlim(75.8, 85.7)
+    ax.set_ylim(23.2, 31.0)
+    ax.set_xlabel("Longitude", color="white", fontsize=11)
+    ax.set_ylabel("Latitude", color="white", fontsize=11)
+
+    ax.tick_params(
+        colors="white",
+        labelsize=10
+    )
+
+    for spine in ax.spines.values():
+        spine.set_visible(False)
+
+    from matplotlib.ticker import ScalarFormatter
+
+    cbar = plt.colorbar(
+        im,
+        ax=ax,
+        fraction=0.045,
+        pad=0.04
+    )
+
+    formatter = ScalarFormatter(useMathText=False)
+    formatter.set_scientific(False)
+    formatter.set_useOffset(False)
+
+    cbar.ax.yaxis.set_major_formatter(formatter)
+    cbar.ax.yaxis.get_offset_text().set_visible(False)
+
+    cbar.update_ticks()
+
+    cbar.ax.tick_params(colors="white")
+    cbar.set_label(label, color="white")
+
+    fig.tight_layout()
+
+    return fig
 
 # ---------------------------------------------------------
 # Forecast Settings
 # ---------------------------------------------------------
 
-st.sidebar.header("Forecast Settings")
+st.subheader("Forecast Settings")
 
-selected_date = st.sidebar.date_input(
-    "Forecast Date",
-    value=forecast_dates[0],
-    min_value=forecast_dates[0],
-    max_value=forecast_dates[-1]
-)
+c1, c2, c3, c4 = st.columns([2, 1, 1, 1])
 
-forecast_horizon = st.sidebar.selectbox(
-    "Forecast Horizon",
-    [1],
-    index=0,
-    help="Current model predicts one day ahead."
-)
+with c1:
+    selected_date = st.date_input(
+        "Forecast Date",
+        value=forecast_dates[0],
+        min_value=forecast_dates[0],
+        max_value=forecast_dates[-1]
+    )
 
-mc_samples = st.sidebar.selectbox(
-    "Monte Carlo Samples",
-    [10, 20, 30, 50],
-    index=2,
-    help="Number of stochastic forward passes used to estimate prediction uncertainty."
-)
+with c2:
+    forecast_horizon = st.selectbox(
+        "Forecast Horizon",
+        [1]
+    )
 
-run = st.sidebar.button(
-    "Run Forecast",
-    use_container_width=True
-)
+with c3:
+    mc_samples = st.selectbox(
+        "MC Samples",
+        [10, 20, 30, 50],
+        index=2
+    )
 
-st.sidebar.markdown("---")
+with c4:
+    st.write("")
+    st.write("")
+    run = st.button(
+        "Run Forecast",
+        use_container_width=True
+    )
 
-with st.sidebar.expander("Forecast Guide"):
+st.divider()
+
+with st.expander("Forecast Guide"):
 
     st.markdown("""
 ### Forecast Date
@@ -233,9 +310,13 @@ Generates:
 # Prepare Prediction
 # ---------------------------------------------------------
 
-sample = np.where(
-    forecast_dates == selected_date
-)[0][0]
+matches = np.where(forecast_dates == selected_date)[0]
+
+if len(matches) == 0:
+    st.error("Selected forecast date is unavailable.")
+    st.stop()
+
+sample = matches[0]
 
 X, y = dataset[sample]
 
@@ -277,10 +358,13 @@ mae = np.mean(
     )
 )
 
-correlation = np.corrcoef(
-    truth.flatten(),
-    prediction.flatten()
-)[0, 1]
+if np.std(truth) == 0 or np.std(prediction) == 0:
+    correlation = np.nan
+else:
+    correlation = np.corrcoef(
+        truth.flatten(),
+        prediction.flatten()
+    )[0, 1]
 
 confidence_interval = (
     prediction.mean()
@@ -321,7 +405,7 @@ c4.metric(
 # Prediction Maps
 # ---------------------------------------------------------
 
-st.markdown("---")
+st.divider()
 
 st.subheader("Forecast Visualisation")
 
@@ -341,73 +425,59 @@ col1, col2 = st.columns(2)
 # Ground Truth
 # ---------------------------------------------------------
 
+cmap = plt.cm.Blues.copy()
+cmap.set_bad(STREAMLIT_BG)
+
+cmap.set_bad(color=STREAMLIT_BG)
+
+
 with col1:
 
-    st.markdown("### Ground Truth")
+    st.subheader("Ground Truth")
 
-    fig, ax = plt.subplots(
-        figsize=(6,6),
-        facecolor="#1E1E1E"
-    )
-
-    im = ax.imshow(
+    fig = plot_map(
         truth,
-        cmap="Blues",
+        "Observed Rainfall",
+        cmap=cmap,
         vmin=vmin,
-        vmax=vmax
-    )
-
-    ax.axis("off")
-
-    plt.colorbar(
-        im,
-        shrink=0.8
+        vmax=vmax,
+        label="mm/day"
     )
 
     st.pyplot(fig)
+
+    plt.close(fig)
+
+plt.close(fig)
 
 # ---------------------------------------------------------
 # Mean Prediction
 # ---------------------------------------------------------
-import matplotlib.pyplot as plt
-
-cmap = plt.cm.Blues.copy()
-
-cmap.set_bad(color="#3F94EF")   # Light gray
 
 with col2:
 
-    st.markdown("### AI Prediction")
+    st.subheader("AI Prediction")
 
-    fig, ax = plt.subplots(figsize=(6,6))
-
-    fig.patch.set_facecolor("#0E1117")    
-    ax.set_facecolor("#20232A")       
-
-    cmap = plt.cm.Blues.copy()
-    cmap.set_bad("#20232A")
-
-    im = ax.imshow(
+    fig = plot_map(
         prediction,
+        "Predicted Rainfall",
         cmap=cmap,
         vmin=vmin,
-        vmax=vmax
-    )
-
-    ax.axis("off")
-
-    plt.colorbar(
-        im,
-        shrink=0.8
+        vmax=vmax,
+        label="mm/day"
     )
 
     st.pyplot(fig)
+
+    plt.close(fig)
+
+plt.close(fig)
 
 # ---------------------------------------------------------
 # Error & Uncertainty
 # ---------------------------------------------------------
 
-st.markdown("---")
+st.divider()
 
 col3, col4 = st.columns(2)
 
@@ -417,29 +487,25 @@ col3, col4 = st.columns(2)
 
 with col3:
 
-    st.markdown("### Prediction Error")
+    st.subheader("Prediction Error")
 
-    limit = np.max(
-        np.abs(difference)
-    )
+    limit = np.nanmax(np.abs(difference))
 
-    fig, ax = plt.subplots(figsize=(6,6))
-
-    im = ax.imshow(
+    fig = plot_map(
         difference,
+        "Prediction Error",
         cmap="RdBu_r",
         vmin=-limit,
-        vmax=limit
-    )
-
-    ax.axis("off")
-
-    plt.colorbar(
-        im,
-        shrink=0.8
+        vmax=limit,
+        center=0,
+        label="mm/day"
     )
 
     st.pyplot(fig)
+
+    plt.close(fig)
+
+plt.close(fig)
 
 # ---------------------------------------------------------
 # Uncertainty
@@ -447,28 +513,27 @@ with col3:
 
 with col4:
 
-    st.markdown("### Prediction Uncertainty")
+    st.subheader("Prediction Uncertainty")
 
-    fig, ax = plt.subplots(figsize=(6,6))
-
-    im = ax.imshow(
+    fig = plot_map(
         uncertainty,
-        cmap="inferno"
-    )
-
-    ax.axis("off")
-
-    plt.colorbar(
-        im,
-        shrink=0.8
+        "Model Uncertainty",
+        cmap="inferno",
+        vmin=0,
+        vmax=np.nanmax(uncertainty),
+        label="Std. Dev."
     )
 
     st.pyplot(fig)
+
+    plt.close(fig)
+
+plt.close(fig)
 # ---------------------------------------------------------
 # Evaluation Metrics
 # ---------------------------------------------------------
 
-st.markdown("---")
+st.divider()
 
 st.subheader("Evaluation Metrics")
 
@@ -516,17 +581,15 @@ to
 # Prediction Distribution
 # ---------------------------------------------------------
 
-st.markdown("---")
+st.divider()
 
 st.subheader("Prediction Distribution")
 
 fig, ax = plt.subplots(figsize=(8,4))
 
-ax.hist(
-    prediction.flatten(),
-    bins=40,
-    edgecolor="black"
-)
+values = prediction[np.isfinite(prediction)]
+
+ax.hist(values, bins=40)
 
 ax.set_xlabel("Predicted Rainfall")
 
@@ -534,13 +597,18 @@ ax.set_ylabel("Grid Cells")
 
 ax.set_title("Distribution of Predicted Rainfall")
 
-st.pyplot(fig)
+left, center, right = st.columns([1, 4, 1])
+
+with center:
+    st.pyplot(fig)
+
+plt.close(fig)
 
 # ---------------------------------------------------------
 # Forecast Interpretation
 # ---------------------------------------------------------
 
-st.markdown("---")
+st.divider()
 
 st.subheader("Forecast Interpretation")
 
@@ -586,7 +654,7 @@ st.success(
 # What do the maps mean?
 # ---------------------------------------------------------
 
-st.markdown("---")
+st.divider()
 
 with st.expander("🗺️ Understanding the Maps"):
 
@@ -657,7 +725,7 @@ The expected range within which the predicted rainfall is likely to lie based on
 # Model Information
 # ---------------------------------------------------------
 
-st.markdown("---")
+st.divider()
 
 with st.expander("🤖 About this Forecast"):
 
