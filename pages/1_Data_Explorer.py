@@ -65,6 +65,9 @@ st.set_page_config(
 )
 
 st.title("Climate Data Explorer")
+st.caption(
+    "Explore climate variables across the region through interactive spatial maps, temporal trends, and statistical summaries."
+)
 
 # --------------------------------------------------
 # Load Dataset
@@ -326,7 +329,7 @@ if data.ndim == 3:
         for spine in ax.spines.values():
             spine.set_visible(False)
         st.pyplot(fig)
-        
+
 # --------------------------------------------------
 # Time Variables
 # --------------------------------------------------

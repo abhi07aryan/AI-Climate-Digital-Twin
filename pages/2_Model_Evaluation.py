@@ -11,6 +11,33 @@ st.set_page_config(
 )
 
 st.title("Model Evaluation")
+st.caption(
+    "Evaluate the ConvLSTM model using quantitative metrics and visual comparisons."
+)
+
+col1, col2, col3 = st.columns([2,2,2])
+
+with col1:
+    show_history = st.checkbox(
+        "Training History",
+        value=True,
+        key="history"
+    )
+
+with col2:
+    show_maps = st.checkbox(
+        "Prediction Maps",
+        value=True,
+        key="maps"
+    )
+
+with col3:
+    show_hist = st.checkbox(
+        "Error Histogram",
+        value=True,
+        key="hist"
+    )
+
 
 # ------------------------------------------------------------
 # Paths
@@ -58,6 +85,25 @@ if metrics_file.exists():
         f"{metrics['Correlation'][0]:.4f}"
     )
 
+    with st.expander("What do these metrics mean?"):
+        st.markdown("""
+    **RMSE**
+    - Penalizes large prediction errors.
+    - Lower is better.
+
+    **MAE**
+    - Average absolute prediction error.
+    - Easier to interpret than RMSE.
+
+    **R² Score**
+    - Measures how well predictions explain observed variability.
+    - Values closer to 1 indicate better performance.
+
+    **Correlation**
+    - Indicates agreement between predicted and observed spatial patterns.
+    - Higher values are better.
+    """)
+
 else:
 
     st.warning(
@@ -69,42 +115,66 @@ st.divider()
 # ------------------------------------------------------------
 # Training Curve
 # ------------------------------------------------------------
+if show_hist:
+    st.header("Training History")
 
-st.header("Training History")
+    if history_file.exists():
 
-if history_file.exists():
+        history = pd.read_csv(history_file)
 
-    history = pd.read_csv(history_file)
+        STREAMLIT_BG = "#0E1117"
 
-    fig, ax = plt.subplots(figsize=(8,4))
+        fig, ax = plt.subplots(
+            figsize=(8,4),
+            facecolor=STREAMLIT_BG
+        )
 
-    ax.plot(
-        history["epoch"],
-        history["train_loss"],
-        label="Train"
-    )
+        ax.set_facecolor(STREAMLIT_BG)
 
-    ax.plot(
-        history["epoch"],
-        history["valid_loss"],
-        label="Validation"
-    )
+        ax.tick_params(colors="white")
 
-    ax.set_xlabel("Epoch")
+        ax.set_xlabel("Epochs",color="white")
+        ax.set_ylabel("Loss",color="white")
 
-    ax.set_ylabel("Loss")
+        for spine in ax.spines.values():
+            spine.set_visible(False)
 
-    ax.grid(True)
+        ax.plot(
+            history["epoch"],
+            history["train_loss"],
+            linewidth=2,
+            label="Training"
+        )
 
-    ax.legend()
+        ax.plot(
+            history["epoch"],
+            history["valid_loss"],
+            linewidth=2,
+            label="Validation"
+        )
 
-    st.pyplot(fig)
+        ax.set_title(
+            "Training & Validation Loss",
+            color="white"
+        )
 
-else:
+        ax.grid(alpha=0.3)
 
-    st.info(
-        "history.csv not found."
-    )
+        legend = ax.legend(frameon=False)
+
+        for text in legend.get_texts():
+            text.set_color("white")
+
+        left, center, right = st.columns([1, 4, 1])
+
+        with center:
+            st.pyplot(fig)
+
+    else:
+
+        st.info(
+            "history.csv not found."
+        )
 
 st.divider()
 
@@ -112,55 +182,100 @@ st.divider()
 # Prediction Images
 # ------------------------------------------------------------
 
-st.header("Prediction Results")
+if show_maps:
 
-col1, col2 = st.columns(2)
+    st.header("Prediction Results")
 
-with col1:
+    col1, col2 = st.columns([2,1])
 
-    st.subheader("Prediction")
+    with col1:
 
-    if prediction_file.exists():
+        st.subheader("Prediction")
 
-        st.image(
-            Image.open(prediction_file),
-            use_container_width=True
-        )
+        if prediction_file.exists():
 
-    else:
+            st.image(
+                Image.open(prediction_file),
+                use_container_width=True
+            )
 
-        st.info("prediction.png not found.")
+        else:
 
-with col2:
+            st.info("prediction.png not found.")
 
-    st.subheader("Error Map")
+    with col2:
 
-    if error_file.exists():
+        st.subheader("Error Map")
 
-        st.image(
-            Image.open(error_file),
-            use_container_width=True
-        )
+        if error_file.exists():
 
-    else:
+            st.image(
+                Image.open(error_file),
+                use_container_width=True
+            )
 
-        st.info("error.png not found.")
+        else:
 
-st.divider()
+            st.info("error.png not found.")
+
+with st.expander("About these visualizations"):
+
+    st.markdown("""
+- **Prediction:** Rainfall predicted by the ConvLSTM model.
+- **Prediction Error:** Difference between predicted and observed rainfall.
+- Blue shades indicate underprediction, while red shades indicate overprediction.
+""")
+
+    st.divider()
 
 # ------------------------------------------------------------
 # Error Histogram
 # ------------------------------------------------------------
 
-st.header("Prediction Error Distribution")
+if show_hist:
+    st.header("Prediction Error Distribution")
 
-if histogram_file.exists():
+    if histogram_file.exists():
 
-    st.image(
-        Image.open(histogram_file),
-        use_container_width=True
+        left, center, right = st.columns([1,4,1])
+
+        with center:
+            st.image(
+                Image.open(histogram_file),
+                use_container_width=True
+            )
+        st.caption(
+        "Distribution of prediction errors across the evaluation dataset."
+        )
+    else:
+        st.info("histogram.png not found.")
+
+    st.divider()
+
+    st.header("Evaluation Information")
+
+    c1, c2, c3, c4 = st.columns(4)
+
+    c1.metric(
+        "Model",
+        "ConvLSTM"
     )
 
-else:
+    c2.metric(
+        "Forecast Horizon",
+        "1 Day"
+    )
 
-    st.info("histogram.png not found.")
+    c3.metric(
+        "Grid Size",
+        "129 × 135"
+    )
+
+    c4.metric(
+        "Metrics",
+        "RMSE / MAE / R²"
+    )
+
+    st.caption(
+        "Performance metrics are computed using the held-out test dataset."
+    )
