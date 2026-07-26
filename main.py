@@ -1,5 +1,20 @@
 import xarray as xr
+from pathlib import Path
+import gdown
 
-ds = xr.open_dataset("data/processed/climate_up.nc")
+ds = Path("data/processed/climate_up.nc")
+def download_dataset():
+    ds.parent.mkdir(parents=True, exist_ok=True)
+
+    file_id = "https://drive.google.com/file/d/13lBEsLoVTmgFnEIOJXYiXMc6QAKch71k/view?usp=drive_link"
+
+    gdown.download(
+        id=file_id,
+        output=str(ds),
+        quiet=False
+    )
+
+if not ds.exists():
+    download_dataset()
 
 print(ds)

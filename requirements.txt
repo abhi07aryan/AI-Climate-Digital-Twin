@@ -21,6 +21,9 @@ pyproj>=3.6
 # Visualization
 matplotlib>=3.9
 
+# Google Drive
+gdown
+
 # Progress bars
 tqdm>=4.66
 

@@ -1,9 +1,11 @@
 from pathlib import Path
 
+import gdown
 import matplotlib.pyplot as plt
 import numpy as np
 import streamlit as st
 import xarray as xr
+import gdown
 import pandas as pd
 
 # Colormap for each variable
@@ -58,6 +60,20 @@ LABELS = {
 # --------------------------------------------------
 
 DATASET = Path("data/processed/climate_up.nc")
+def download_dataset():
+    DATASET.parent.mkdir(parents=True, exist_ok=True)
+
+    file_id = "https://drive.google.com/file/d/13lBEsLoVTmgFnEIOJXYiXMc6QAKch71k/view?usp=drive_link"
+
+    gdown.download(
+        id=file_id,
+        output=str(DATASET),
+        quiet=False
+    )
+
+if not DATASET.exists():
+    with st.spinner("Downloading dataset..."):
+        download_dataset()
 
 st.set_page_config(
     page_title="Data Explorer",

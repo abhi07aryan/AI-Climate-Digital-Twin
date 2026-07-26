@@ -1,8 +1,9 @@
 import xarray as xr
 import torch
+import gdown
 import matplotlib.pyplot as plt
 import numpy as np
-
+from pathlib import Path
 from climate_twin.preprocessing.split import TimeSeriesSplit
 from climate_twin.preprocessing.normalize import ClimateNormalizer
 from climate_twin.ml.dataset import ClimateTorchDataset
@@ -15,7 +16,20 @@ def main():
     # Configuration
     # --------------------------------------------------------
 
-    DATASET = "data/processed/climate_up.nc"
+    DATASET = Path("data/processed/climate_up.nc")
+    def download_dataset():
+        DATASET.parent.mkdir(parents=True, exist_ok=True)
+
+        file_id = "https://drive.google.com/file/d/13lBEsLoVTmgFnEIOJXYiXMc6QAKch71k/view?usp=drive_link"
+
+        gdown.download(
+            id=file_id,
+            output=str(DATASET),
+            quiet=False
+        )
+
+    if not DATASET.exists():
+        download_dataset()
     MODEL = "models/convlstm_up_best.pth"
 
     WINDOW_SIZE = 30

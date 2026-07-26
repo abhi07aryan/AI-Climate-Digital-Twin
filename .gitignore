@@ -24,9 +24,5 @@ data/processed/
 # NumPy
 *.npy
 
-# PyTorch
-*.pt
-*.pth
-
 # Logs
 *.log
