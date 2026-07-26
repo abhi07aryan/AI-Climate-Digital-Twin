@@ -27,7 +27,17 @@ MC_SAMPLES = 30
 FEATURES = [
     "rainfall",
     "tmax",
-    "tmin"
+    "tmin",
+    "temp_mean",
+    "temp_range",
+    "rain_7day",
+    "rain_lag1",
+    "rain_lag3",
+    "rain_lag7",
+    "month",
+    "season",
+    "dayofyear",
+    "rain_anomaly",
 ]
 
 DEVICE = torch.device(
@@ -59,7 +69,7 @@ def load_model():
 
     model = ConvLSTM(
         input_channels=len(FEATURES),
-        hidden_channels=8,
+        hidden_channels=32,
         output_channels=1
     )
 
