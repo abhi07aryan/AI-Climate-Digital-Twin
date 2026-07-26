@@ -6,6 +6,7 @@ import streamlit as st
 import torch
 import xarray as xr
 import pandas as pd
+import gdown
 
 from climate_twin.models.convlstm import ConvLSTM
 from climate_twin.preprocessing.normalize import ClimateNormalizer
