@@ -1,6 +1,6 @@
 import numpy as np
 
-from climate_twin.simulation.compare import ClimateComparison
+from src.climate_twin.simulation.compare import ClimateComparison
 
 baseline = np.random.rand(
     5,

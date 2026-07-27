@@ -1,6 +1,6 @@
 import torch
 
-from climate_twin.training.scheduler import build_scheduler
+from src.climate_twin.training.scheduler import build_scheduler
 
 model = torch.nn.Linear(10, 1)
 

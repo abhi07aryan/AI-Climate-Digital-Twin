@@ -1,4 +1,4 @@
-from climate_twin.data.imd_base import IMDBaseLoader
+from src.climate_twin.data.imd_base import IMDBaseLoader
 
 import numpy as np
 
