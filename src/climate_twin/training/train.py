@@ -29,7 +29,7 @@ def main():
     def download_dataset():
         DATASET.parent.mkdir(parents=True, exist_ok=True)
 
-        file_id = "https://drive.google.com/file/d/13lBEsLoVTmgFnEIOJXYiXMc6QAKch71k/view?usp=drive_link"
+        file_id = "13lBEsLoVTmgFnEIOJXYiXMc6QAKch71k"
 
         gdown.download(
             id=file_id,
