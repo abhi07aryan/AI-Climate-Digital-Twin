@@ -115,7 +115,7 @@ def main():
 
     model = ConvLSTM(
         input_channels=len(FEATURES),
-        hidden_channels=8,
+        hidden_channels=32,
         output_channels=1
     )
 
