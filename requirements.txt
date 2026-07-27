@@ -20,6 +20,7 @@ pyproj>=3.6
 
 # Visualization
 matplotlib>=3.9
+streamlit
 
 # Google Drive
 gdown

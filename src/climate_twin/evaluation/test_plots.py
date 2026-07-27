@@ -1,6 +1,6 @@
 import numpy as np
 
-from climate_twin.evaluation.plots import ClimatePlots
+from src.climate_twin.evaluation.plots import ClimatePlots
 
 truth = np.random.rand(129,135)
 
