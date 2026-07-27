@@ -42,52 +42,42 @@ def main():
 
     WINDOW_SIZE = 30          # 7/30
     BATCH_SIZE = 4            # 8 if RAM allows
-    HIDDEN_CHANNELS = 32      # 8/32
+    HIDDEN_CHANNELS = 8      # 8/32
     EPOCHS = 30               # 2/30
     LEARNING_RATE = 1e-5
 
     FEATURES = [
         "rainfall",
         "tmax",
-        "tmin",
-        "temp_mean",
-        "temp_range",
-        "rain_7day",
-        "rain_30day",
-        "rain_lag1",
-        "rain_lag3",
-        "rain_lag7",
-        "month",
-        "season",
-        "dayofyear",
-        "rain_anomaly"
-    ]
-
-    # FEATURES = [
-    #     "rainfall",
-    #     "tmax",
-    #     "tmin"
+        "tmin"]
+    #     "temp_mean",
+    #     "temp_range",
+    #     "rain_7day",
+    #     "rain_30day",
+    #     "rain_lag1",
+    #     "rain_lag3",
+    #     "rain_lag7",
+    #     "month",
+    #     "season",
+    #     "dayofyear",
+    #     "rain_anomaly"
     # ]
+
 
     NORMALIZE = [
         "rainfall",
         "tmax",
-        "tmin",
-        "temp_mean",
-        "temp_range",
-        "rain_7day",
-        "rain_30day",
-        "rain_lag1",
-        "rain_lag3",
-        "rain_lag7",
-        "rain_anomaly"
-    ]
-
-    # NORMALIZE = [
-    #     "rainfall",
-    #     "tmax",
-    #     "tmin",
+        "tmin"]
+    #     "temp_mean",
+    #     "temp_range",
+    #     "rain_7day",
+    #     "rain_30day",
+    #     "rain_lag1",
+    #     "rain_lag3",
+    #     "rain_lag7",
+    #     "rain_anomaly"
     # ]
+
 
     # --------------------------------------------------------
     # Device
@@ -119,9 +109,9 @@ def main():
     # Development Mode
     # --------------------------------------------------------
 
-    # train = train.isel(time=slice(0,365))
-    # valid = valid.isel(time=slice(0,100))
-    # test  = test.isel(time=slice(0,100))
+    train = train.isel(time=slice(0,365))
+    valid = valid.isel(time=slice(0,100))
+    test  = test.isel(time=slice(0,100))
 
     # --------------------------------------------------------
     # Normalize
