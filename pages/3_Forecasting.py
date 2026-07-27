@@ -9,10 +9,10 @@ import torch
 import xarray as xr
 import gdown
 
-from src.climate_twin.models.convlstm import ConvLSTM
-from src.climate_twin.preprocessing.normalize import ClimateNormalizer
-from src.climate_twin.preprocessing.split import TimeSeriesSplit
-from src.climate_twin.ml.dataset import ClimateTorchDataset
+from climate_twin.models.convlstm import ConvLSTM
+from climate_twin.preprocessing.normalize import ClimateNormalizer
+from climate_twin.preprocessing.split import TimeSeriesSplit
+from climate_twin.ml.dataset import ClimateTorchDataset
 
 # ---------------------------------------------------------
 # Configuration

@@ -1,7 +1,7 @@
 import torch
 
-from src.climate_twin.forecasting.recursive_forecast import RecursiveForecaster
-from src.climate_twin.simulation.scenario import ClimateScenario
+from climate_twin.forecasting.recursive_forecast import RecursiveForecaster
+from climate_twin.simulation.scenario import ClimateScenario
 
 
 class ClimateSimulator:

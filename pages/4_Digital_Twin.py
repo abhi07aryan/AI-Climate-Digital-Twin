@@ -8,13 +8,13 @@ import xarray as xr
 import pandas as pd
 import gdown
 
-from src.climate_twin.models.convlstm import ConvLSTM
-from src.climate_twin.preprocessing.normalize import ClimateNormalizer
-from src.climate_twin.preprocessing.split import TimeSeriesSplit
-from src.climate_twin.ml.dataset import ClimateTorchDataset
+from climate_twin.models.convlstm import ConvLSTM
+from climate_twin.preprocessing.normalize import ClimateNormalizer
+from climate_twin.preprocessing.split import TimeSeriesSplit
+from climate_twin.ml.dataset import ClimateTorchDataset
 
-from src.climate_twin.simulation.scenario import ClimateScenario
-from src.climate_twin.forecasting.recursive_forecast import RecursiveForecaster
+from climate_twin.simulation.scenario import ClimateScenario
+from climate_twin.forecasting.recursive_forecast import RecursiveForecaster
 
 
 # ----------------------------------------------------

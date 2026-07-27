@@ -1,7 +1,7 @@
 from pathlib import Path
 import geopandas as gpd
 
-from src.climate_twin.logger import logger
+from climate_twin.logger import logger
 
 
 class ShapeLoader:

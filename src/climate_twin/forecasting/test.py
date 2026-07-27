@@ -1,6 +1,6 @@
 import numpy as np
 
-from src.climate_twin.forecasting.save_forecast import ForecastWriter
+from climate_twin.forecasting.save_forecast import ForecastWriter
 
 forecast = np.random.rand(
     30,
