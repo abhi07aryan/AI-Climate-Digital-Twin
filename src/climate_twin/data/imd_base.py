@@ -6,7 +6,7 @@ import numpy as np
 import pandas as pd
 import xarray as xr
 
-from src.climate_twin.logger import logger
+from climate_twin.logger import logger
 
 
 class IMDBaseLoader:

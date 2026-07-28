@@ -4,12 +4,12 @@ import gdown
 import matplotlib.pyplot as plt
 import numpy as np
 from pathlib import Path
-from src.climate_twin.preprocessing.split import TimeSeriesSplit
-from src.climate_twin.preprocessing.normalize import ClimateNormalizer
-from src.climate_twin.ml.dataset import ClimateTorchDataset
-from src.climate_twin.models.convlstm import ConvLSTM
-from src.climate_twin.applications.flood import compute_flood_risk
-from src.climate_twin.applications.drought import compute_drought
+from climate_twin.preprocessing.split import TimeSeriesSplit
+from climate_twin.preprocessing.normalize import ClimateNormalizer
+from climate_twin.ml.dataset import ClimateTorchDataset
+from climate_twin.models.convlstm import ConvLSTM
+from climate_twin.applications.flood import compute_flood_risk
+from climate_twin.applications.drought import compute_drought
 
 def main():
 
@@ -139,17 +139,19 @@ def main():
 
     X, y = test_dataset[sample]
 
+    # Save temperatures BEFORE moving to GPU
+    tmax = X[-1, FEATURES.index("tmax")].numpy()
+    tmin = X[-1, FEATURES.index("tmin")].numpy()
+
     X = X.unsqueeze(0).to(device)
 
     with torch.no_grad():
-
         prediction = model(X)
-    rain = prediction["rainfall"]
-    temp = prediction["temperature"]
 
-    flood = compute_flood_risk(rain)
-    drought = compute_drought(rain, temp)
     prediction = prediction.squeeze().cpu().numpy()
+    rain = prediction
+    flood = compute_flood_risk(rain)
+    drought = compute_drought(rain, tmax, tmin)
 
     truth = y.squeeze().cpu().numpy()
 
@@ -235,7 +237,6 @@ def main():
 
     return {
     "rainfall": rain,
-    "temperature": temp,
     "flood": flood,
     "drought": drought
 }
