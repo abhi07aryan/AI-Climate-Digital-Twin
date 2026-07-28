@@ -291,6 +291,6 @@ st.markdown("""
 
 Made with ❤️ by Team 'A' Game
 
-APURVA MISHRA    •    AARTI PRIYADARSHINI    •    ABHI ARYAN    •    ADITYA SINHA
+APURVA MISHRA • AARTI PRIYADARSHINI • ABHI ARYAN • ADITYA SINHA
 </div>
 """,unsafe_allow_html=True)
