@@ -9,14 +9,13 @@ import torch
 import xarray as xr
 import gdown
 
-from src.climate_twin.models.convlstm import ConvLSTM
-from src.climate_twin.preprocessing.normalize import ClimateNormalizer
-from src.climate_twin.preprocessing.split import TimeSeriesSplit
-from src.climate_twin.ml.dataset import ClimateTorchDataset
-from src.climate_twin.inference import predict
-from src.climate_twin.applications.flood import compute_flood_risk
-from src.climate_twin.applications.drought import compute_drought
-import cartopy.crs as ccrs
+from climate_twin.models.convlstm import ConvLSTM
+from climate_twin.preprocessing.normalize import ClimateNormalizer
+from climate_twin.preprocessing.split import TimeSeriesSplit
+from climate_twin.ml.dataset import ClimateTorchDataset
+from climate_twin.inference import predict
+from climate_twin.applications.flood import compute_flood_risk
+from climate_twin.applications.drought import compute_drought
 
 # Major cities in Uttar Pradesh
 UP_CITIES = {
@@ -58,18 +57,16 @@ def add_up_cities(ax):
 
     for city, (lat, lon) in UP_CITIES.items():
 
-        # Red marker
-        ax.plot(
+        ax.scatter(
             lon,
             lat,
-            marker="o",
-            markersize=3,
-            color="red",
-            transform=ccrs.PlateCarree(),
-            zorder=10,
+            s=18,
+            c="red",
+            edgecolors="white",
+            linewidth=0.6,
+            zorder=20,
         )
 
-        # City name
         ax.text(
             lon + 0.08,
             lat + 0.08,
@@ -77,14 +74,13 @@ def add_up_cities(ax):
             fontsize=7,
             color="white",
             weight="bold",
-            transform=ccrs.PlateCarree(),
-            zorder=11,
             bbox=dict(
                 facecolor="black",
                 alpha=0.45,
                 edgecolor="none",
                 pad=1,
             ),
+            zorder=21,
         )
 
 MODEL = Path("models/convlstm_up_best.pth")
@@ -317,60 +313,6 @@ def plot_map(data, title, cmap, vmin=None, vmax=None, center=None, label=""):
 # ---------------------------------------------------------
 # Forecast Settings
 # ---------------------------------------------------------
-forecast = predict()
-
-rainfall = forecast["rainfall"]
-temperature = forecast["temperature"]
-flood = compute_flood_risk(rainfall)
-
-drought = compute_drought(
-    rainfall,
-    temperature
-)
-st.sidebar.title("Applications")
-
-page = st.sidebar.radio(
-    "Select",
-    [
-        "Forecast",
-        "Flood Preparedness",
-        "Drought Monitoring"
-    ]
-)
-
-if page == "Forecast":
-
-    st.title("Climate Forecast")
-
-    fig, ax = plt.subplots()
-
-    ax.imshow(rainfall)
-
-    st.pyplot(fig)
-
-elif page == "Flood Preparedness":
-
-    st.title("Flood Risk")
-
-    fig, ax = plt.subplots()
-
-    im = ax.imshow(flood)
-
-    plt.colorbar(im)
-
-    st.pyplot(fig)
-
-elif page == "Drought Monitoring":
-
-    st.title("Drought Risk")
-
-    fig, ax = plt.subplots()
-
-    im = ax.imshow(drought)
-
-    plt.colorbar(im)
-
-    st.pyplot(fig)
 
 st.subheader("Forecast Settings")
 
@@ -534,6 +476,26 @@ c4.metric(
     f"{rmse:.4f}"
 )
 
+forecast_tab, flood_tab, drought_tab = st.tabs(
+    [
+        "Rainfall Forecast",
+        "Flood Preparedness",
+        "Drought Monitoring"
+    ]
+)
+cmap = plt.cm.Blues.copy()
+cmap.set_bad(STREAMLIT_BG)
+
+cmap.set_bad(color=STREAMLIT_BG)
+
+rainfall = prediction
+flood = compute_flood_risk(prediction)
+
+tmax = X[0, -1, FEATURES.index("tmax")].cpu().numpy()
+tmin = X[0, -1, FEATURES.index("tmin")].cpu().numpy()
+
+drought = compute_drought(prediction, tmax, tmin)
+
 # ---------------------------------------------------------
 # Prediction Maps
 # ---------------------------------------------------------
@@ -552,116 +514,141 @@ vmax = max(
     np.nanmax(prediction)
 )
 
-col1, col2 = st.columns(2)
 
-# ---------------------------------------------------------
-# Ground Truth
-# ---------------------------------------------------------
+with forecast_tab:
 
-cmap = plt.cm.Blues.copy()
-cmap.set_bad(STREAMLIT_BG)
+    # ---------------------------------------------------------
+    # Ground Truth
+    # ---------------------------------------------------------
 
-cmap.set_bad(color=STREAMLIT_BG)
+    st.title("Climate Forecast")
+    col1, col2 = st.columns(2)
 
+    with col1:
 
-with col1:
+        st.subheader("Ground Truth")
 
-    st.subheader("Ground Truth")
+        fig = plot_map(
+            truth,
+            "Observed Rainfall",
+            cmap=cmap,
+            vmin=vmin,
+            vmax=vmax,
+            label="mm/day"
+        )
+
+        st.pyplot(fig)
+
+        plt.close(fig)
+
+    # ---------------------------------------------------------
+    # Mean Prediction
+    # ---------------------------------------------------------
+
+    with col2:
+
+        st.subheader("AI Prediction")
+
+        fig = plot_map(
+            prediction,
+            "Predicted Rainfall",
+            cmap=cmap,
+            vmin=vmin,
+            vmax=vmax,
+            label="mm/day"
+        )
+
+        st.pyplot(fig)
+
+        plt.close(fig)
+
+    # ---------------------------------------------------------
+    # Error & Uncertainty
+    # ---------------------------------------------------------
+
+    st.divider()
+
+    col3, col4 = st.columns(2)
+
+    # ---------------------------------------------------------
+    # Error Map
+    # ---------------------------------------------------------
+
+    with col3:
+
+        st.subheader("Prediction Error")
+
+        limit = np.nanmax(np.abs(difference))
+
+        fig = plot_map(
+            difference,
+            "Prediction Error",
+            cmap="RdBu_r",
+            vmin=-limit,
+            vmax=limit,
+            center=0,
+            label="mm/day"
+        )
+
+        st.pyplot(fig)
+
+        plt.close(fig)
+
+    # ---------------------------------------------------------
+    # Uncertainty
+    # ---------------------------------------------------------
+
+    with col4:
+
+        st.subheader("Prediction Uncertainty")
+
+        fig = plot_map(
+            uncertainty,
+            "Model Uncertainty",
+            cmap="inferno",
+            vmin=0,
+            vmax=np.nanmax(uncertainty),
+            label="Std. Dev."
+        )
+
+        st.pyplot(fig)
+        plt.close(fig)
+
+with flood_tab:
+
+    st.subheader("Flood Preparedness")
+    flood_min = np.nanmin(flood)
+    flood_max = np.nanmax(flood)
 
     fig = plot_map(
-        truth,
-        "Observed Rainfall",
-        cmap=cmap,
-        vmin=vmin,
-        vmax=vmax,
-        label="mm/day"
+        flood,
+        "Flood Risk",
+        cmap="Reds",
+        vmin=flood_min,
+        vmax=flood_max,
+        label="Risk"
     )
 
     st.pyplot(fig)
-
     plt.close(fig)
 
-plt.close(fig)
+with drought_tab:
 
-# ---------------------------------------------------------
-# Mean Prediction
-# ---------------------------------------------------------
-
-with col2:
-
-    st.subheader("AI Prediction")
-
+    st.subheader("Drought Monitoring")
+    drought_min = np.nanmin(drought)
+    drought_max = np.nanmax(drought)
     fig = plot_map(
-        prediction,
-        "Predicted Rainfall",
-        cmap=cmap,
-        vmin=vmin,
-        vmax=vmax,
-        label="mm/day"
+        drought,
+        "Drought Risk",
+        cmap="YlOrBr",
+        vmin=drought_min,
+        vmax=drought_max,
+        label="Rish=k"
     )
 
     st.pyplot(fig)
-
     plt.close(fig)
 
-plt.close(fig)
-
-# ---------------------------------------------------------
-# Error & Uncertainty
-# ---------------------------------------------------------
-
-st.divider()
-
-col3, col4 = st.columns(2)
-
-# ---------------------------------------------------------
-# Error Map
-# ---------------------------------------------------------
-
-with col3:
-
-    st.subheader("Prediction Error")
-
-    limit = np.nanmax(np.abs(difference))
-
-    fig = plot_map(
-        difference,
-        "Prediction Error",
-        cmap="RdBu_r",
-        vmin=-limit,
-        vmax=limit,
-        center=0,
-        label="mm/day"
-    )
-
-    st.pyplot(fig)
-
-    plt.close(fig)
-
-plt.close(fig)
-
-# ---------------------------------------------------------
-# Uncertainty
-# ---------------------------------------------------------
-
-with col4:
-
-    st.subheader("Prediction Uncertainty")
-
-    fig = plot_map(
-        uncertainty,
-        "Model Uncertainty",
-        cmap="inferno",
-        vmin=0,
-        vmax=np.nanmax(uncertainty),
-        label="Std. Dev."
-    )
-
-    st.pyplot(fig)
-
-    plt.close(fig)
-
-plt.close(fig)
 # ---------------------------------------------------------
 # Evaluation Metrics
 # ---------------------------------------------------------
@@ -815,13 +802,14 @@ st.success(
 """
 )
 
+
 # ---------------------------------------------------------
 # What do the maps mean?
 # ---------------------------------------------------------
 
 st.divider()
 
-with st.expander("🗺️ Understanding the Maps"):
+with st.expander("Understanding the Maps"):
 
     st.markdown("""
 ### Ground Truth
@@ -892,7 +880,7 @@ The expected range within which the predicted rainfall is likely to lie based on
 
 st.divider()
 
-with st.expander("🤖 About this Forecast"):
+with st.expander("About this Forecast"):
 
     st.markdown(f"""
 **Model**

@@ -50,13 +50,18 @@ h1,h2,h3{
     background:#132c49;
     padding:25px;
     border-radius:15px;
-    height:250px;
+    min-height:300px;
     box-shadow:0px 0px 12px rgba(0,0,0,0.3);
+
+    display:flex;
+    flex-direction:column;
+    justify-content:flex-start;
+
     transition:0.3s;
 }
 
 .card:hover{
-    transform:scale(1.03);
+    transform:translateY(-4px);
 }
 
 .pipeline{
@@ -110,17 +115,14 @@ st.divider()
 # METRICS
 # ---------------------------------------------------------
 
-st.subheader("📊 Current Climate Snapshot")
+st.subheader("Platform Capabilities")
 
 m1,m2,m3,m4=st.columns(4)
 
-m1.metric("Temperature","34.2 °C","+1.2°C")
-
-m2.metric("Rainfall","112 mm","+18 mm")
-
-m3.metric("Humidity","74 %","+4%")
-
-m4.metric("Wind","15 km/h","-2 km/h")
+m1.metric("AI (Deep Learning) Model", "ConvLSTM")
+m2.metric("Forecast Horizon", "7 Days")
+m3.metric("Region", "Uttar Pradesh")
+m4.metric("Monte Carlo", "10/20/30/50 Samples")
 
 st.divider()
 
@@ -156,7 +158,7 @@ with c2:
     st.markdown("""
 <div class='card'>
 
-<h2>🌾 Drought Monitoring</h2>
+<h2>Drought Monitoring</h2>
 
 Predicts rainfall deficit and water stress using
 temperature and precipitation forecasts.
@@ -179,7 +181,7 @@ with c3:
     st.markdown("""
 <div class='card'>
 
-<h2>🛰 Climate Forecasting</h2>
+<h2>Climate Forecasting</h2>
 
 Forecast future climate variables using
 ConvLSTM deep learning.
@@ -198,7 +200,7 @@ with c4:
     st.markdown("""
 <div class='card'>
 
-<h2>🌍 Digital Twin</h2>
+<h2>Digital Twin</h2>
 
 Simulate climate scenarios and evaluate
 "What-if" conditions.
@@ -218,7 +220,7 @@ st.divider()
 # PIPELINE
 # ---------------------------------------------------------
 
-st.subheader("⚡ Model Pipeline")
+st.subheader("Model Pipeline")
 
 st.markdown("""
 <div class='pipeline'>

@@ -23,16 +23,6 @@ st.set_page_config(
 st.markdown("""
 <style>
 
-/* Hide sidebar completely */
-[data-testid="stSidebar"]{
-    display:none;
-}
-
-/* Hide hamburger */
-[data-testid="collapsedControl"]{
-    display:none;
-}
-
 /* Reduce top padding */
 .block-container{
     padding-top:2rem;
@@ -71,7 +61,7 @@ AI-Powered Rainfall Forecasting | Climate Simulation | Uncertainty Estimation
 
 pg = st.navigation(
     [
-        st.page("pages/0_Home.py", title="Home", icon="🌎"),
+        st.Page("pages/0_Home.py", title="Home", icon=":material/home:"),
         st.Page("pages/1_Data_Explorer.py", title="Data Explorer", icon=":material/bar_chart:"),
         st.Page("pages/2_Model_Evaluation.py", title="Model Evaluation", icon=":material/analytics:"),
         st.Page("pages/3_Forecasting.py", title="Forecasting", icon=":material/cloud:"),

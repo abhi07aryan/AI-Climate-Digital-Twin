@@ -7,7 +7,6 @@ import streamlit as st
 import xarray as xr
 import gdown
 import pandas as pd
-import cartopy.crs as ccrs
 
 # Major cities in Uttar Pradesh
 UP_CITIES = {
@@ -95,18 +94,16 @@ def add_up_cities(ax):
 
     for city, (lat, lon) in UP_CITIES.items():
 
-        # Red marker
-        ax.plot(
+        ax.scatter(
             lon,
             lat,
-            marker="o",
-            markersize=3,
-            color="red",
-            transform=ccrs.PlateCarree(),
-            zorder=10,
+            s=18,
+            c="red",
+            edgecolors="white",
+            linewidth=0.6,
+            zorder=20,
         )
 
-        # City name
         ax.text(
             lon + 0.08,
             lat + 0.08,
@@ -114,14 +111,13 @@ def add_up_cities(ax):
             fontsize=7,
             color="white",
             weight="bold",
-            transform=ccrs.PlateCarree(),
-            zorder=11,
             bbox=dict(
                 facecolor="black",
                 alpha=0.45,
                 edgecolor="none",
                 pad=1,
             ),
+            zorder=21,
         )
 
 st.set_page_config(
@@ -343,7 +339,6 @@ if data.ndim == 3:
         vmin=vmin,
         vmax=vmax,
     )
-    add_up_cities(ax)
     ax.set_xlim(75.8, 85.7)
     ax.set_ylim(23.2, 31.0)
     ax.set_xlabel("Longitude (°E)", color="white")
@@ -362,7 +357,7 @@ if data.ndim == 3:
     cbar.outline.set_edgecolor("white")
 
     plt.tight_layout()
-
+    add_up_cities(ax)
     st.pyplot(fig)
     
     if show_stats:

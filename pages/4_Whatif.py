@@ -17,7 +17,7 @@ from src.climate_twin.simulation.scenario import ClimateScenario
 from src.climate_twin.forecasting.recursive_forecast import RecursiveForecaster
 from src.climate_twin.applications.flood import compute_flood_risk
 from src.climate_twin.applications.drought import compute_drought
-import cartopy.crs as ccrs
+
 
 # Major cities in Uttar Pradesh
 UP_CITIES = {
@@ -74,6 +74,7 @@ FEATURES = [
 DEVICE = torch.device(
     "cuda" if torch.cuda.is_available() else "cpu"
 )
+
 def add_up_cities(ax):
     """
     Add major Uttar Pradesh cities to any Cartopy axis.
@@ -81,18 +82,16 @@ def add_up_cities(ax):
 
     for city, (lat, lon) in UP_CITIES.items():
 
-        # Red marker
-        ax.plot(
+        ax.scatter(
             lon,
             lat,
-            marker="o",
-            markersize=3,
-            color="red",
-            transform=ccrs.PlateCarree(),
-            zorder=10,
+            s=18,
+            c="red",
+            edgecolors="white",
+            linewidth=0.6,
+            zorder=20,
         )
 
-        # City name
         ax.text(
             lon + 0.08,
             lat + 0.08,
@@ -100,14 +99,13 @@ def add_up_cities(ax):
             fontsize=7,
             color="white",
             weight="bold",
-            transform=ccrs.PlateCarree(),
-            zorder=11,
             bbox=dict(
                 facecolor="black",
                 alpha=0.45,
                 edgecolor="none",
                 pad=1,
             ),
+            zorder=21,
         )
 # ----------------------------------------------------
 # Streamlit
