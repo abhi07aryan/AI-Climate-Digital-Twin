@@ -1,6 +1,7 @@
 from pathlib import Path
 
 import matplotlib.pyplot as plt
+from matplotlib.ticker import ScalarFormatter
 import numpy as np
 import streamlit as st
 import torch
@@ -8,15 +9,12 @@ import xarray as xr
 import pandas as pd
 import gdown
 
-from src.climate_twin.models.convlstm import ConvLSTM
-from src.climate_twin.preprocessing.normalize import ClimateNormalizer
-from src.climate_twin.preprocessing.split import TimeSeriesSplit
-from src.climate_twin.ml.dataset import ClimateTorchDataset
-
-from src.climate_twin.simulation.scenario import ClimateScenario
-from src.climate_twin.forecasting.recursive_forecast import RecursiveForecaster
-from src.climate_twin.applications.flood import compute_flood_risk
-from src.climate_twin.applications.drought import compute_drought
+from climate_twin.models.convlstm import ConvLSTM
+from climate_twin.preprocessing.normalize import ClimateNormalizer
+from climate_twin.preprocessing.split import TimeSeriesSplit
+from climate_twin.ml.dataset import ClimateTorchDataset
+from climate_twin.simulation.scenario import ClimateScenario
+from climate_twin.forecasting.recursive_forecast import RecursiveForecaster
 
 
 # Major cities in Uttar Pradesh
@@ -70,6 +68,18 @@ FEATURES = [
     #     "dayofyear",
     #     "rain_anomaly"
     # ]
+
+# Major cities in Uttar Pradesh
+UP_CITIES = {
+    "Lucknow":    (26.8467, 80.9462),
+    "Kanpur":     (26.4499, 80.3319),
+    "Prayagraj":  (25.4358, 81.8463),
+    "Varanasi":   (25.3176, 82.9739),
+    "Gorakhpur":  (26.7606, 83.3732),
+    "Bareilly":   (28.3670, 79.4304),
+    "Meerut":     (28.9845, 77.7064),
+    "Jhansi":     (25.4484, 78.5685),
+}
 
 DEVICE = torch.device(
     "cuda" if torch.cuda.is_available() else "cpu"
@@ -171,7 +181,7 @@ def load_dataset():
         window_size=WINDOW_SIZE
     )
 
-    return dataset, test
+    return dataset, test, normalizer
 
 MC_SAMPLES = 30
 
@@ -227,67 +237,86 @@ def mc_recursive_predict(
 
 model = load_model()
 
-dataset, test = load_dataset()
+dataset, test, normalizer = load_dataset()
 
 lat = test.lat.values
 lon = test.lon.values
 
-def plot_map(data, title, cmap, vmin=None, vmax=None):
+STREAMLIT_BG = "#0E1117"
 
-    mask = np.isfinite(data)
+def plot_map(data, title, cmap, vmin=None, vmax=None, center=None, label=""):
 
-    mask = np.isfinite(test.rainfall.isel(time=0).values)
+    data = np.ma.masked_invalid(data)
 
-    valid_rows = np.where(mask.any(axis=1))[0]
-    valid_cols = np.where(mask.any(axis=0))[0]
+    if isinstance(cmap, str):
+        cmap = plt.get_cmap(cmap).copy()
 
-    r0, r1 = valid_rows[0], valid_rows[-1] + 1
-    c0, c1 = valid_cols[0], valid_cols[-1] + 1
-
-    lat_plot = lat[r0:r1]
-    lon_plot = lon[c0:c1]
-    data_plot = data[r0:r1, c0:c1]
-    
-    if len(valid_rows) == 0 or len(valid_cols) == 0:
-        fig, ax = plt.subplots(figsize=(5, 5))
-        ax.text(
-            0.5,
-            0.5,
-            "No valid data",
-            ha="center",
-            va="center"
-        )
-        ax.axis("off")
-        return fig
-    lat_plot = lat[valid_rows[0]:valid_rows[-1] + 1]
-    lon_plot = lon[valid_cols[0]:valid_cols[-1] + 1]
-
-    data_plot = data[
-        valid_rows[0]:valid_rows[-1] + 1,
-        valid_cols[0]:valid_cols[-1] + 1
-    ]
-
-    lon2d, lat2d = np.meshgrid(lon_plot, lat_plot)
-
-    fig, ax = plt.subplots(figsize=(5, 5))
-
-    im = ax.pcolormesh(
-        lon2d,
-        lat2d,
-        data_plot,
-        cmap=cmap,
-        shading="auto",
-        vmin=vmin,
-        vmax=vmax
+    cmap.set_bad(STREAMLIT_BG)
+    fig, ax = plt.subplots(
+        figsize=(6, 5),
+        facecolor=STREAMLIT_BG
     )
 
-    plt.colorbar(im, ax=ax)
+    ax.set_facecolor(STREAMLIT_BG)
+
+    if center is None:
+        im = ax.pcolormesh(
+            lon,
+            lat,
+            data,
+            cmap=cmap,
+            shading="auto",
+            vmin=vmin,
+            vmax=vmax
+        )
+    else:
+        limit = max(abs(vmin), abs(vmax))
+
+        im = ax.pcolormesh(
+            lon,
+            lat,
+            data,
+            cmap=cmap,
+            shading="auto",
+            vmin=-limit,
+            vmax=limit,
+        )
     add_up_cities(ax)
-    ax.set_xlabel("Longitude")
-    ax.set_ylabel("Latitude")
-    ax.set_title(title)
-    ax.set_aspect("equal")
+    ax.set_title(title, color="white", fontsize=14)
+    ax.set_xlim(75.8, 85.7)
+    ax.set_ylim(23.2, 31.0)
+    ax.set_xlabel("Longitude", color="white", fontsize=11)
+    ax.set_ylabel("Latitude", color="white", fontsize=11)
+
+    ax.tick_params(
+        colors="white",
+        labelsize=10
+    )
+
+    for spine in ax.spines.values():
+        spine.set_visible(False)
+
+    cbar = plt.colorbar(
+        im,
+        ax=ax,
+        fraction=0.045,
+        pad=0.04
+    )
+
+    formatter = ScalarFormatter(useMathText=False)
+    formatter.set_scientific(False)
+    formatter.set_useOffset(False)
+
+    cbar.ax.yaxis.set_major_formatter(formatter)
+    cbar.ax.yaxis.get_offset_text().set_visible(False)
+
+    cbar.update_ticks()
+
+    cbar.ax.tick_params(colors="white")
+    cbar.set_label(label, color="white")
+
     fig.tight_layout()
+
     return fig
 
 # ----------------------------------------------------
@@ -507,6 +536,15 @@ if run:
     )
 
     diff = scen - base
+    valid_mask = ~np.isnan(
+        test["rainfall"].isel(time=0).values
+    )
+
+    base                 = np.ma.masked_where(~valid_mask, base)
+    scen                 = np.ma.masked_where(~valid_mask, scen)
+    base_uncertainty     = np.ma.masked_where(~valid_mask, base_uncertainty)
+    scenario_uncertainty = np.ma.masked_where(~valid_mask, scenario_uncertainty)
+    diff                 = np.ma.masked_where(~valid_mask, diff)
 
     # -------------------------
     # Maps
@@ -523,10 +561,12 @@ if run:
             "Baseline",
             cmap="Blues",
             vmin=vmin,
-            vmax=vmax
+            vmax=vmax,
+            label="mm/day"
         )
 
         st.pyplot(fig)
+        plt.close()
 
     with c2:
 
@@ -537,7 +577,8 @@ if run:
             "Scenerio",
             cmap="Blues",
             vmin=vmin,
-            vmax=vmax
+            vmax=vmax,
+            label="mm/day"
         )
 
         st.pyplot(fig)
@@ -551,7 +592,8 @@ if run:
             "Difference",
             cmap="RdBu_r",
             vmin=-limit,
-            vmax=limit
+            vmax=limit,
+            label="mm/day"
         )
 
         st.pyplot(fig)
@@ -571,7 +613,8 @@ if run:
             "Baseline Uncertainty",
             cmap="inferno",
             vmin=0,
-            vmax=np.nanmax(base_uncertainty)
+            vmax=np.nanmax(base_uncertainty),
+            label="Std. Dev."
         )
 
         st.pyplot(fig)
@@ -585,7 +628,8 @@ if run:
             "Scenario Uncertainty",
             cmap="inferno",
             vmin=0,
-            vmax=np.nanmax(scenario_uncertainty)
+            vmax=np.nanmax(scenario_uncertainty),
+            label="Std. Dev."
         )
 
         st.pyplot(fig)
@@ -609,34 +653,43 @@ if run:
     st.divider()
 
     st.subheader("Simulation Summary")
-
     m1, m2, m3 = st.columns(3)
+    
+    baseline = normalizer.inverse_transform_array(
+        base,
+        "rainfall"
+    )
 
+    scenario = normalizer.inverse_transform_array(
+        scen,
+        "rainfall"
+    )
+    difference = scenario - base
     m1.metric(
         "Average Baseline Rainfall",
-        f"{base.mean():.3f}"
+        f"{baseline.mean():.3f}"
     )
 
     m2.metric(
         "Average Scenario Rainfall",
-        f"{scen.mean():.3f}"
+        f"{scenario.mean():.3f}"
     )
 
     m3.metric(
         "Average Change",
-        f"{diff.mean():+.3f}"
+        f"{(difference).mean():+.3f}"
     )
 
     m4, m5, m6 = st.columns(3)
 
     m4.metric(
         "Maximum Increase",
-        f"{diff.max():.3f}"
+        f"{difference.max():.3f}"
     )
 
     m5.metric(
         "Maximum Decrease",
-        f"{diff.min():.3f}"
+        f"{difference.min():.3f}"
     )
 
     m6.metric(

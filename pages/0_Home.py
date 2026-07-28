@@ -100,7 +100,8 @@ st.write("")
 c1,c2,c3=st.columns([2,1,1])
 
 with c2:
-    st.button("Launch Dashboard",use_container_width=True)
+    if st.button("Launch Dashboard", use_container_width=True):
+        st.switch_page("pages/1_Data_Explorer.py")
 
 with c3:
     st.link_button(
@@ -290,5 +291,6 @@ st.markdown("""
 
 Made with ❤️ by Team 'A' Game
 
+APURVA MISHRA    •    AARTI PRIYADARSHINI    •    ABHI ARYAN    •    ADITYA SINHA
 </div>
 """,unsafe_allow_html=True)

@@ -2,20 +2,42 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
+import zipfile
 import matplotlib.pyplot as plt
 
 import streamlit as st
 import torch
 import xarray as xr
 import gdown
+import geopandas as gpd
+import regionmask
 
 from climate_twin.models.convlstm import ConvLSTM
 from climate_twin.preprocessing.normalize import ClimateNormalizer
 from climate_twin.preprocessing.split import TimeSeriesSplit
 from climate_twin.ml.dataset import ClimateTorchDataset
-from climate_twin.inference import predict
+from matplotlib.ticker import ScalarFormatter
 from climate_twin.applications.flood import compute_flood_risk
 from climate_twin.applications.drought import compute_drought
+
+
+
+DATASET = Path("data/processed/climate_up.nc")
+def download_dataset():
+    DATASET.parent.mkdir(parents=True, exist_ok=True)
+
+    file_id = "13lBEsLoVTmgFnEIOJXYiXMc6QAKch71k"
+
+    gdown.download(
+        id=file_id,
+        output=str(DATASET),
+        quiet=False
+    )
+
+if not DATASET.exists():
+    with st.spinner("Downloading dataset..."):
+        download_dataset()
+
 
 # Major cities in Uttar Pradesh
 UP_CITIES = {
@@ -28,27 +50,10 @@ UP_CITIES = {
     "Meerut":     (28.9845, 77.7064),
     "Jhansi":     (25.4484, 78.5685),
 }
+
 # ---------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------
-
-DATASET = Path("data/processed/climate_up.nc")
-def download_dataset():
-    DATASET.parent.mkdir(parents=True, exist_ok=True)
-
-    file_id = "13lBEsLoVTmgFnEIOJXYiXMc6QAKch71k"
-
-    gdown.download(
-        id=file_id,
-        output=str(DATASET),
-
-
-        quiet=False
-    )
-
-if not DATASET.exists():
-    with st.spinner("Downloading dataset..."):
-        download_dataset()
 
 def add_up_cities(ax):
     """
@@ -167,7 +172,6 @@ def load_model():
 def load_dataset():
 
     ds = xr.open_dataset(DATASET)
-
     splitter = TimeSeriesSplit()
 
     train, valid, test = splitter.split(ds)
@@ -192,14 +196,13 @@ def load_dataset():
         test.time.values[WINDOW_SIZE:]
     ).date
 
-    return dataset, forecast_dates, test
+    return dataset, forecast_dates, test, normalizer
 
 model = load_model()
 
-dataset, forecast_dates, test_ds = load_dataset()
+dataset, forecast_dates, test_ds, normalizer = load_dataset()
 lat = test_ds.lat.values
 lon = test_ds.lon.values
-
 # ---------------------------------------------------------
 # Monte Carlo Dropout
 # ---------------------------------------------------------
@@ -284,8 +287,6 @@ def plot_map(data, title, cmap, vmin=None, vmax=None, center=None, label=""):
 
     for spine in ax.spines.values():
         spine.set_visible(False)
-
-    from matplotlib.ticker import ScalarFormatter
 
     cbar = plt.colorbar(
         im,
@@ -489,20 +490,25 @@ cmap.set_bad(STREAMLIT_BG)
 cmap.set_bad(color=STREAMLIT_BG)
 
 rainfall = prediction
-flood = compute_flood_risk(prediction)
-
+flood = compute_flood_risk(truth, normalizer)
 tmax = X[0, -1, FEATURES.index("tmax")].cpu().numpy()
 tmin = X[0, -1, FEATURES.index("tmin")].cpu().numpy()
+drought = compute_drought(truth, tmax, tmin, normalizer)
 
-drought = compute_drought(prediction, tmax, tmin)
+valid_mask = ~np.isnan(
+    test_ds["rainfall"].isel(time=0).values
+)
+
+prediction = np.ma.masked_where(~valid_mask, prediction)
+truth      = np.ma.masked_where(~valid_mask, truth)
+flood      = np.ma.masked_where(~valid_mask, flood)
+drought    = np.ma.masked_where(~valid_mask, drought)
 
 # ---------------------------------------------------------
 # Prediction Maps
 # ---------------------------------------------------------
 
 st.divider()
-
-st.subheader("Forecast Visualisation")
 
 vmin = min(
     np.nanmin(truth),

@@ -32,6 +32,18 @@ class ClimateNormalizer:
         self.fit(ds, variables)
 
         return self.transform(ds)
+
+
+    def inverse_transform_array(self, data, feature):
+        if hasattr(data, "values"):
+            data = data.values
+
+        stat = self.stats[feature]
+
+        mean = float(stat["mean"])
+        std = float(stat["std"])
+
+        return data * std + mean
     
     def inverse_transform(self, ds):
         
