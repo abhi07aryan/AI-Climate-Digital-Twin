@@ -13,7 +13,22 @@ from src.climate_twin.models.convlstm import ConvLSTM
 from src.climate_twin.preprocessing.normalize import ClimateNormalizer
 from src.climate_twin.preprocessing.split import TimeSeriesSplit
 from src.climate_twin.ml.dataset import ClimateTorchDataset
+from src.climate_twin.inference import predict
+from src.climate_twin.applications.flood import compute_flood_risk
+from src.climate_twin.applications.drought import compute_drought
+import cartopy.crs as ccrs
 
+# Major cities in Uttar Pradesh
+UP_CITIES = {
+    "Lucknow":    (26.8467, 80.9462),
+    "Kanpur":     (26.4499, 80.3319),
+    "Prayagraj":  (25.4358, 81.8463),
+    "Varanasi":   (25.3176, 82.9739),
+    "Gorakhpur":  (26.7606, 83.3732),
+    "Bareilly":   (28.3670, 79.4304),
+    "Meerut":     (28.9845, 77.7064),
+    "Jhansi":     (25.4484, 78.5685),
+}
 # ---------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------
@@ -35,7 +50,43 @@ def download_dataset():
 if not DATASET.exists():
     with st.spinner("Downloading dataset..."):
         download_dataset()
-    
+
+def add_up_cities(ax):
+    """
+    Add major Uttar Pradesh cities to any Cartopy axis.
+    """
+
+    for city, (lat, lon) in UP_CITIES.items():
+
+        # Red marker
+        ax.plot(
+            lon,
+            lat,
+            marker="o",
+            markersize=3,
+            color="red",
+            transform=ccrs.PlateCarree(),
+            zorder=10,
+        )
+
+        # City name
+        ax.text(
+            lon + 0.08,
+            lat + 0.08,
+            city,
+            fontsize=7,
+            color="white",
+            weight="bold",
+            transform=ccrs.PlateCarree(),
+            zorder=11,
+            bbox=dict(
+                facecolor="black",
+                alpha=0.45,
+                edgecolor="none",
+                pad=1,
+            ),
+        )
+
 MODEL = Path("models/convlstm_up_best.pth")
 
 WINDOW_SIZE = 30
@@ -45,18 +96,18 @@ MC_SAMPLES = 30
 FEATURES = [
     "rainfall",
     "tmax",
-    "tmin",
-    "temp_mean",
-    "temp_range",
-    "rain_7day",
-    "rain_lag1",
-    "rain_lag3",
-    "rain_lag7",
-    "month",
-    "season",
-    "dayofyear",
-    "rain_anomaly",
-]
+    "tmin"]
+#     "temp_mean",
+#     "temp_range",
+#     "rain_7day",
+#     "rain_lag1",
+#     "rain_lag3",
+#     "rain_lag7",
+#     "month",
+#     "season",
+#     "dayofyear",
+#     "rain_anomaly",
+# ]
 
 DEVICE = torch.device(
     "cuda"
@@ -87,7 +138,7 @@ def load_model():
 
     model = ConvLSTM(
         input_channels=len(FEATURES),
-        hidden_channels=32,
+        hidden_channels=8,
         output_channels=1
     )
 
@@ -223,7 +274,7 @@ def plot_map(data, title, cmap, vmin=None, vmax=None, center=None, label=""):
             vmin=-limit,
             vmax=limit,
         )
-
+    add_up_cities(ax)
     ax.set_title(title, color="white", fontsize=14)
     ax.set_xlim(75.8, 85.7)
     ax.set_ylim(23.2, 31.0)
@@ -266,6 +317,60 @@ def plot_map(data, title, cmap, vmin=None, vmax=None, center=None, label=""):
 # ---------------------------------------------------------
 # Forecast Settings
 # ---------------------------------------------------------
+forecast = predict()
+
+rainfall = forecast["rainfall"]
+temperature = forecast["temperature"]
+flood = compute_flood_risk(rainfall)
+
+drought = compute_drought(
+    rainfall,
+    temperature
+)
+st.sidebar.title("Applications")
+
+page = st.sidebar.radio(
+    "Select",
+    [
+        "Forecast",
+        "Flood Preparedness",
+        "Drought Monitoring"
+    ]
+)
+
+if page == "Forecast":
+
+    st.title("Climate Forecast")
+
+    fig, ax = plt.subplots()
+
+    ax.imshow(rainfall)
+
+    st.pyplot(fig)
+
+elif page == "Flood Preparedness":
+
+    st.title("Flood Risk")
+
+    fig, ax = plt.subplots()
+
+    im = ax.imshow(flood)
+
+    plt.colorbar(im)
+
+    st.pyplot(fig)
+
+elif page == "Drought Monitoring":
+
+    st.title("Drought Risk")
+
+    fig, ax = plt.subplots()
+
+    im = ax.imshow(drought)
+
+    plt.colorbar(im)
+
+    st.pyplot(fig)
 
 st.subheader("Forecast Settings")
 

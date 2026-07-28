@@ -7,6 +7,19 @@ import streamlit as st
 import xarray as xr
 import gdown
 import pandas as pd
+import cartopy.crs as ccrs
+
+# Major cities in Uttar Pradesh
+UP_CITIES = {
+    "Lucknow":    (26.8467, 80.9462),
+    "Kanpur":     (26.4499, 80.3319),
+    "Prayagraj":  (25.4358, 81.8463),
+    "Varanasi":   (25.3176, 82.9739),
+    "Gorakhpur":  (26.7606, 83.3732),
+    "Bareilly":   (28.3670, 79.4304),
+    "Meerut":     (28.9845, 77.7064),
+    "Jhansi":     (25.4484, 78.5685),
+}
 
 # Colormap for each variable
 CMAPS = {
@@ -74,6 +87,42 @@ def download_dataset():
 if not DATASET.exists():
     with st.spinner("Downloading dataset..."):
         download_dataset()
+
+def add_up_cities(ax):
+    """
+    Add major Uttar Pradesh cities to any Cartopy axis.
+    """
+
+    for city, (lat, lon) in UP_CITIES.items():
+
+        # Red marker
+        ax.plot(
+            lon,
+            lat,
+            marker="o",
+            markersize=3,
+            color="red",
+            transform=ccrs.PlateCarree(),
+            zorder=10,
+        )
+
+        # City name
+        ax.text(
+            lon + 0.08,
+            lat + 0.08,
+            city,
+            fontsize=7,
+            color="white",
+            weight="bold",
+            transform=ccrs.PlateCarree(),
+            zorder=11,
+            bbox=dict(
+                facecolor="black",
+                alpha=0.45,
+                edgecolor="none",
+                pad=1,
+            ),
+        )
 
 st.set_page_config(
     page_title="Data Explorer",
@@ -294,6 +343,7 @@ if data.ndim == 3:
         vmin=vmin,
         vmax=vmax,
     )
+    add_up_cities(ax)
     ax.set_xlim(75.8, 85.7)
     ax.set_ylim(23.2, 31.0)
     ax.set_xlabel("Longitude (°E)", color="white")

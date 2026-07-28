@@ -15,8 +15,21 @@ from src.climate_twin.ml.dataset import ClimateTorchDataset
 
 from src.climate_twin.simulation.scenario import ClimateScenario
 from src.climate_twin.forecasting.recursive_forecast import RecursiveForecaster
+from src.climate_twin.applications.flood import compute_flood_risk
+from src.climate_twin.applications.drought import compute_drought
+import cartopy.crs as ccrs
 
-
+# Major cities in Uttar Pradesh
+UP_CITIES = {
+    "Lucknow":    (26.8467, 80.9462),
+    "Kanpur":     (26.4499, 80.3319),
+    "Prayagraj":  (25.4358, 81.8463),
+    "Varanasi":   (25.3176, 82.9739),
+    "Gorakhpur":  (26.7606, 83.3732),
+    "Bareilly":   (28.3670, 79.4304),
+    "Meerut":     (28.9845, 77.7064),
+    "Jhansi":     (25.4484, 78.5685),
+}
 # ----------------------------------------------------
 # Configuration
 # ----------------------------------------------------
@@ -44,24 +57,58 @@ WINDOW_SIZE = 30
 FEATURES = [
         "rainfall",
         "tmax",
-        "tmin",
-        "temp_mean",
-        "temp_range",
-        "rain_7day",
-        "rain_30day",
-        "rain_lag1",
-        "rain_lag3",
-        "rain_lag7",
-        "month",
-        "season",
-        "dayofyear",
-        "rain_anomaly"
-    ]
+        "tmin"]
+    #     "temp_mean",
+    #     "temp_range",
+    #     "rain_7day",
+    #     "rain_30day",
+    #     "rain_lag1",
+    #     "rain_lag3",
+    #     "rain_lag7",
+    #     "month",
+    #     "season",
+    #     "dayofyear",
+    #     "rain_anomaly"
+    # ]
 
 DEVICE = torch.device(
     "cuda" if torch.cuda.is_available() else "cpu"
 )
+def add_up_cities(ax):
+    """
+    Add major Uttar Pradesh cities to any Cartopy axis.
+    """
 
+    for city, (lat, lon) in UP_CITIES.items():
+
+        # Red marker
+        ax.plot(
+            lon,
+            lat,
+            marker="o",
+            markersize=3,
+            color="red",
+            transform=ccrs.PlateCarree(),
+            zorder=10,
+        )
+
+        # City name
+        ax.text(
+            lon + 0.08,
+            lat + 0.08,
+            city,
+            fontsize=7,
+            color="white",
+            weight="bold",
+            transform=ccrs.PlateCarree(),
+            zorder=11,
+            bbox=dict(
+                facecolor="black",
+                alpha=0.45,
+                edgecolor="none",
+                pad=1,
+            ),
+        )
 # ----------------------------------------------------
 # Streamlit
 # ----------------------------------------------------
@@ -82,7 +129,7 @@ def load_model():
 
     model = ConvLSTM(
         input_channels=len(FEATURES),
-        hidden_channels=32,
+        hidden_channels=8,
         output_channels=1
     )
 
@@ -237,7 +284,7 @@ def plot_map(data, title, cmap, vmin=None, vmax=None):
     )
 
     plt.colorbar(im, ax=ax)
-
+    add_up_cities(ax)
     ax.set_xlabel("Longitude")
     ax.set_ylabel("Latitude")
     ax.set_title(title)

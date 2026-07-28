@@ -4,19 +4,19 @@ import torch.optim as optim
 from torch.utils.data import DataLoader
 from pathlib import Path
 import gdown
-from src.climate_twin.preprocessing.split import TimeSeriesSplit
-from src.climate_twin.preprocessing.normalize import ClimateNormalizer
+from climate_twin.preprocessing.split import TimeSeriesSplit
+from climate_twin.preprocessing.normalize import ClimateNormalizer
 
-from src.climate_twin.ml.dataset import ClimateTorchDataset
+from climate_twin.ml.dataset import ClimateTorchDataset
 
-from src.climate_twin.models.convlstm import ConvLSTM
-from src.climate_twin.models.losses import MaskedMSELoss
+from climate_twin.models.convlstm import ConvLSTM
+from climate_twin.models.losses import MaskedMSELoss
 
-from src.climate_twin.training.callbacks import EarlyStopping
-from src.climate_twin.training.checkpoint import ModelCheckpoint
-from src.climate_twin.training.history import TrainingHistory
-from src.climate_twin.training.scheduler import build_scheduler
-from src.climate_twin.training.trainer import Trainer
+from climate_twin.training.callbacks import EarlyStopping
+from climate_twin.training.checkpoint import ModelCheckpoint
+from climate_twin.training.history import TrainingHistory
+from climate_twin.training.scheduler import build_scheduler
+from climate_twin.training.trainer import Trainer
 
 
 def main():
@@ -49,34 +49,34 @@ def main():
     FEATURES = [
         "rainfall",
         "tmax",
-        "tmin",
-        "temp_mean",
-        "temp_range",
-        "rain_7day",
-        "rain_30day",
-        "rain_lag1",
-        "rain_lag3",
-        "rain_lag7",
-        "month",
-        "season",
-        "dayofyear",
-        "rain_anomaly"
-    ]
+        "tmin"]
+    #     "temp_mean",
+    #     "temp_range",
+    #     "rain_7day",
+    #     "rain_30day",
+    #     "rain_lag1",
+    #     "rain_lag3",
+    #     "rain_lag7",
+    #     "month",
+    #     "season",
+    #     "dayofyear",
+    #     "rain_anomaly"
+    # ]
 
 
     NORMALIZE = [
         "rainfall",
         "tmax",
-        "tmin",
-        "temp_mean",
-        "temp_range",
-        "rain_7day",
-        "rain_30day",
-        "rain_lag1",
-        "rain_lag3",
-        "rain_lag7",
-        "rain_anomaly"
-    ]
+        "tmin"]
+    #     "temp_mean",
+    #     "temp_range",
+    #     "rain_7day",
+    #     "rain_30day",
+    #     "rain_lag1",
+    #     "rain_lag3",
+    #     "rain_lag7",
+    #     "rain_anomaly"
+    # ]
 
 
     # --------------------------------------------------------
@@ -109,9 +109,9 @@ def main():
     # Development Mode
     # --------------------------------------------------------
 
-    # train = train.isel(time=slice(0,365))
-    # valid = valid.isel(time=slice(0,100))
-    # test  = test.isel(time=slice(0,100))
+    train = train.isel(time=slice(0,365))
+    valid = valid.isel(time=slice(0,100))
+    test  = test.isel(time=slice(0,100))
 
     # --------------------------------------------------------
     # Normalize

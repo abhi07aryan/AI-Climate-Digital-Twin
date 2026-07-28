@@ -8,7 +8,8 @@ from src.climate_twin.preprocessing.split import TimeSeriesSplit
 from src.climate_twin.preprocessing.normalize import ClimateNormalizer
 from src.climate_twin.ml.dataset import ClimateTorchDataset
 from src.climate_twin.models.convlstm import ConvLSTM
-
+from src.climate_twin.applications.flood import compute_flood_risk
+from src.climate_twin.applications.drought import compute_drought
 
 def main():
 
@@ -115,7 +116,7 @@ def main():
 
     model = ConvLSTM(
         input_channels=len(FEATURES),
-        hidden_channels=32,
+        hidden_channels=8,
         output_channels=1
     )
 
@@ -143,7 +144,11 @@ def main():
     with torch.no_grad():
 
         prediction = model(X)
+    rain = prediction["rainfall"]
+    temp = prediction["temperature"]
 
+    flood = compute_flood_risk(rain)
+    drought = compute_drought(rain, temp)
     prediction = prediction.squeeze().cpu().numpy()
 
     truth = y.squeeze().cpu().numpy()
@@ -227,6 +232,13 @@ def main():
     plt.tight_layout()
 
     plt.show()
+
+    return {
+    "rainfall": rain,
+    "temperature": temp,
+    "flood": flood,
+    "drought": drought
+}
 
 
 if __name__ == "__main__":

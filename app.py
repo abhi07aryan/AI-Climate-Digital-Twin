@@ -71,11 +71,12 @@ AI-Powered Rainfall Forecasting | Climate Simulation | Uncertainty Estimation
 
 pg = st.navigation(
     [
-        st.Page("pages/1_Data_Explorer.py", title="Data Explorer", icon="📊"),
-        st.Page("pages/2_Model_Evaluation.py", title="Model Evaluation", icon="📈"),
-        st.Page("pages/3_Forecasting.py", title="Forecasting", icon="🌧️"),
-        st.Page("pages/4_Digital_Twin.py", title="Digital Twin", icon="🌍"),
-        st.Page("pages/5_About.py", title="About", icon="ℹ️"),
+        st.page("pages/0_Home.py", title="Home", icon="🌎"),
+        st.Page("pages/1_Data_Explorer.py", title="Data Explorer", icon=":material/bar_chart:"),
+        st.Page("pages/2_Model_Evaluation.py", title="Model Evaluation", icon=":material/analytics:"),
+        st.Page("pages/3_Forecasting.py", title="Forecasting", icon=":material/cloud:"),
+        st.Page("pages/4_Whatif.py", title="What-if Simulation", icon=":material/science:"),
+        st.Page("pages/5_About.py", title="About", icon=":material/info:"),
     ],
     position="top",
 )
