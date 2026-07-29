@@ -2,6 +2,7 @@ streamlit>=1.47
 numpy>=2.0
 pandas>=2.2
 matplotlib>=3.9
+regionmask
 scikit-learn>=1.5
 torch>=2.3
 xarray>=2024.6.0

@@ -9,8 +9,6 @@ import streamlit as st
 import torch
 import xarray as xr
 import gdown
-import geopandas as gpd
-import regionmask
 
 from climate_twin.models.convlstm import ConvLSTM
 from climate_twin.preprocessing.normalize import ClimateNormalizer
