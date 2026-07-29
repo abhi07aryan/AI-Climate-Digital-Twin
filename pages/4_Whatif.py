@@ -16,7 +16,6 @@ from climate_twin.ml.dataset import ClimateTorchDataset
 from climate_twin.simulation.scenario import ClimateScenario
 from climate_twin.forecasting.recursive_forecast import RecursiveForecaster
 
-
 # Major cities in Uttar Pradesh
 UP_CITIES = {
     "Lucknow":    (26.8467, 80.9462),
@@ -32,7 +31,7 @@ UP_CITIES = {
 # Configuration
 # ----------------------------------------------------
 
-DATASET = Path("data/processed/climate_up_compressed.pnc")
+DATASET = Path("data/processed/climate_up_compressed.nc")
 def download_dataset():
     DATASET.parent.mkdir(parents=True, exist_ok=True)
 
@@ -368,7 +367,7 @@ with c4:
     temperature = st.slider(
         "Temperature Change (°C)",
         min_value=-2.0,
-        max_value=2.0,
+        max_value=3.0,
         value=0.0,
         step=0.5,
         format="%.1f °C"
