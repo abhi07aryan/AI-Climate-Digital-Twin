@@ -14,8 +14,7 @@ import streamlit as st
 st.set_page_config(
     page_title="AGNI Climate Digital Twin",
     page_icon="",
-    layout="wide",
-    initial_sidebar_state="collapsed"
+    layout="wide"
 )
 
 # ---------------- Hide Sidebar ---------------- #
