@@ -20,7 +20,7 @@ from climate_twin.applications.drought import compute_drought
 
 
 
-DATASET = Path("data/processed/climate_up.nc")
+DATASET = Path("data/processed/climate_up_compressed.pnc")
 def download_dataset():
     DATASET.parent.mkdir(parents=True, exist_ok=True)
 

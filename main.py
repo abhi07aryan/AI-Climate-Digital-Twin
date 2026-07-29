@@ -2,7 +2,7 @@ import xarray as xr
 from pathlib import Path
 import gdown
 
-ds = Path("data/processed/climate_up.nc")
+ds = Path("data/processed/climate_up_compressed.pnc")
 def download_dataset():
     ds.parent.mkdir(parents=True, exist_ok=True)
 
