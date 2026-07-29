@@ -6,7 +6,7 @@ ds = Path("data/processed/climate_up.nc")
 def download_dataset():
     ds.parent.mkdir(parents=True, exist_ok=True)
 
-    file_id = "13lBEsLoVTmgFnEIOJXYiXMc6QAKch71k"
+    file_id = "1Ld7oVZJ5XCFi6o8ZPZ0iM9vErvmQTmZu"
 
     gdown.download(
         id=file_id,
