@@ -348,15 +348,18 @@ if data.ndim == 3:
 
     label = LABELS.get(variable, variable)
     ax.set_title(label, color="white")
-    cbar = plt.colorbar(im, ax=ax, shrink=0.85)
+    cbar = fig.colorbar(im, ax=ax, shrink=0.85)
     cbar.set_label(label, color="white")
     cbar.ax.tick_params(colors="white")
     plt.setp(cbar.ax.get_yticklabels(), color="white")
     cbar.outline.set_edgecolor("white")
 
-    plt.tight_layout()
+    fig.tight_layout()
+
     add_up_cities(ax)
+
     st.pyplot(fig)
+    plt.close(fig)
     
     if show_stats:
         st.subheader("Statistics")
