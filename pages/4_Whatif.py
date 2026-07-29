@@ -44,10 +44,6 @@ def download_dataset():
         quiet=False
     )
 
-if not DATASET.exists():
-    with st.spinner("Downloading dataset..."):
-        download_dataset()
-
 MODEL = "models/convlstm_up_best.pth"
 
 WINDOW_SIZE = 30
@@ -161,6 +157,9 @@ def load_model():
 
 @st.cache_data
 def load_dataset():
+    if not DATASET.exists():
+        with st.spinner("Downloading dataset..."):
+            download_dataset()
 
     ds = xr.open_dataset(DATASET)
 

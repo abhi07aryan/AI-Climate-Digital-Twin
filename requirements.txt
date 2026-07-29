@@ -1,15 +1,9 @@
-# Core scientific computing
+streamlit
 numpy
 pandas
-scipy
-
-# Machine Learning
-torch
-torchvision
-torchaudio
+matplotlib
 scikit-learn
-
-# Climate & Geospatial
+torch
 xarray
 netCDF4
 rioxarray
@@ -17,17 +11,5 @@ rasterio
 geopandas
 shapely
 pyproj
-
-# Visualization
-matplotlib
-streamlit
-cartopy
-
-# Google Drive
-gdown
-
-# Progress bars
-tqdm
-
-# YAML configuration
-PyYAML
+fiona
+huggingface_hub

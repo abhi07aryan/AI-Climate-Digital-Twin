@@ -5,7 +5,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 import streamlit as st
 import xarray as xr
-import gdown
 import pandas as pd
 
 # Major cities in Uttar Pradesh
@@ -83,10 +82,6 @@ def download_dataset():
         quiet=False
     )
 
-if not DATASET.exists():
-    with st.spinner("Downloading dataset..."):
-        download_dataset()
-
 def add_up_cities(ax):
     """
     Add major Uttar Pradesh cities to any Cartopy axis.
@@ -136,6 +131,9 @@ st.caption(
 
 @st.cache_data
 def load_dataset():
+    if not DATASET.exists():
+        with st.spinner("Downloading dataset..."):
+            download_dataset()
     return xr.open_dataset(DATASET)
 
 ds = load_dataset()

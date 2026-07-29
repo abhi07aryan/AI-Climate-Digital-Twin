@@ -34,11 +34,6 @@ def download_dataset():
         quiet=False
     )
 
-if not DATASET.exists():
-    with st.spinner("Downloading dataset..."):
-        download_dataset()
-
-
 # Major cities in Uttar Pradesh
 UP_CITIES = {
     "Lucknow":    (26.8467, 80.9462),
@@ -170,7 +165,9 @@ def load_model():
 
 @st.cache_data
 def load_dataset():
-
+    if not DATASET.exists():
+        with st.spinner("Downloading dataset..."):
+            download_dataset()
     ds = xr.open_dataset(DATASET)
     splitter = TimeSeriesSplit()
 
