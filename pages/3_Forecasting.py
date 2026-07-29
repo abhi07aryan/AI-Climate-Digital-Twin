@@ -644,7 +644,7 @@ with drought_tab:
         cmap="YlOrBr",
         vmin=drought_min,
         vmax=drought_max,
-        label="Rish=k"
+        label="Risk"
     )
 
     st.pyplot(fig)
