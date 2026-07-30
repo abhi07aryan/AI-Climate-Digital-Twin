@@ -38,33 +38,33 @@ def main():
     FEATURES = [
         "rainfall",
         "tmax",
-        "tmin"]
-    #     "temp_mean",
-    #     "temp_range",
-    #     "rain_7day",
-    #     "rain_30day",
-    #     "rain_lag1",
-    #     "rain_lag3",
-    #     "rain_lag7",
-    #     "month",
-    #     "season",
-    #     "dayofyear",
-    #     "rain_anomaly"
-    # ]
+        "tmin",
+        "temp_mean",
+        "temp_range",
+        "rain_7day",
+        "rain_30day",
+        "rain_lag1",
+        "rain_lag3",
+        "rain_lag7",
+        "month",
+        "season",
+        "dayofyear",
+        "rain_anomaly"
+    ]
 
     NORMALIZE = [
         "rainfall",
         "tmax",
-        "tmin"]
-    #     "temp_mean",
-    #     "temp_range",
-    #     "rain_7day",
-    #     "rain_30day",
-    #     "rain_lag1",
-    #     "rain_lag3",
-    #     "rain_lag7",
-    #     "rain_anomaly"
-    # ]
+        "tmin",
+        "temp_mean",
+        "temp_range",
+        "rain_7day",
+        "rain_30day",
+        "rain_lag1",
+        "rain_lag3",
+        "rain_lag7",
+        "rain_anomaly"
+    ]
 
 
     # --------------------------------------------------------
@@ -116,7 +116,7 @@ def main():
 
     model = ConvLSTM(
         input_channels=len(FEATURES),
-        hidden_channels=8,
+        hidden_channels=32,
         output_channels=1
     )
 

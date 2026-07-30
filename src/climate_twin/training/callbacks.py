@@ -8,7 +8,7 @@ class EarlyStopping:
     Stop training when validation loss stops improving.
     """
 
-    patience: int = 5
+    patience: int = 8
     min_delta: float = 0.0
 
     def __post_init__(self):
