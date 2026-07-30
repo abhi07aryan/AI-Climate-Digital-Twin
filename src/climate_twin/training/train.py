@@ -25,7 +25,7 @@ def main():
     # Configuration
     # --------------------------------------------------------
 
-    DATASET = Path("data/processed/climate_up_compressed.pnc")
+    DATASET = Path("data/processed/climate_up_compressed.nc")
     def download_dataset():
         DATASET.parent.mkdir(parents=True, exist_ok=True)
 

@@ -1,7 +1,7 @@
 import xarray as xr
 
 # Open your existing dataset
-ds = xr.open_dataset("data/processed/climate_up_compressed.pnc")
+ds = xr.open_dataset("data/processed/climate_up_compressed.nc")
 
 # (Optional) Convert to float32 to reduce size
 for var in ds.data_vars:
