@@ -1,11 +1,11 @@
-from pathlib import Path
+import os
 import sys
 
-ROOT = Path(__file__).resolve().parent
-SRC = ROOT / "src"
+ROOT = os.path.dirname(os.path.abspath(__file__))
+SRC = os.path.join(ROOT, "src")
 
-if str(SRC) not in sys.path:
-    sys.path.insert(0, str(SRC))
+if SRC not in sys.path:
+    sys.path.insert(0, SRC)
 
 import streamlit as st
 
