@@ -1,0 +1,29 @@
+datasets:
+
+  rainfall:
+    type: csv
+    path: data/raw/imd/rainfall
+
+  tmax:
+    type: csv
+    path: data/raw/imd/tmax
+
+  tmin:
+    type: csv
+    path: data/raw/imd/tmin
+
+  lst:
+    type: netcdf
+    path: data/raw/insat/lst
+
+  sst:
+    type: netcdf
+    path: data/raw/insat/sst
+
+boundaries:
+
+  india:
+    path: data/raw/shapefiles/India_State_Boundary.shp
+
+  up:
+    path: data/raw/shapefiles/uttar_pradesh.shp

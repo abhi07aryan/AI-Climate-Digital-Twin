@@ -41,8 +41,8 @@ def main():
         download_dataset()
 
     WINDOW_SIZE = 30          # 7/30
-    BATCH_SIZE = 16           # 16 if RAM allows
-    HIDDEN_CHANNELS = 32      # 8/32
+    BATCH_SIZE = 4            # 16 if RAM allows
+    HIDDEN_CHANNELS = 8       # 8/32
     EPOCHS = 30               # 2/30
     LEARNING_RATE = 1e-5
 
@@ -109,9 +109,9 @@ def main():
     # Development Mode
     # --------------------------------------------------------
 
-    # train = train.isel(time=slice(0,365))
-    # valid = valid.isel(time=slice(0,100))
-    # test  = test.isel(time=slice(0,100))
+    train = train.isel(time=slice(0,365))
+    valid = valid.isel(time=slice(0,100))
+    test  = test.isel(time=slice(0,100))
 
     # --------------------------------------------------------
     # Normalize
