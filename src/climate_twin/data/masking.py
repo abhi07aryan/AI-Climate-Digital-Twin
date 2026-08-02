@@ -4,7 +4,7 @@ import xarray as xr
 
 class SpatialMasker:
     """
-    Spatially mask a climate dataset using a state boundary.
+    Spatially mask a climate dataset using state boundary.
     """
 
     def clip(self, dataset: xr.Dataset, boundary):

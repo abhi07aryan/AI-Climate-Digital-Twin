@@ -9,6 +9,7 @@ import torch
 import xarray as xr
 import gdown
 
+from climate_twin.forecasting.recursive_forecast import RecursiveForecaster
 from climate_twin.models.convlstm import ConvLSTM
 from climate_twin.preprocessing.normalize import ClimateNormalizer
 from climate_twin.preprocessing.split import TimeSeriesSplit
@@ -201,11 +202,7 @@ lon = test_ds.lon.values
 # Monte Carlo Dropout
 # ---------------------------------------------------------
 
-def mc_predict(
-    model,
-    x,
-    samples=MC_SAMPLES
-):
+def mc_predict(model, sequence, days, samples=MC_SAMPLES):
 
     model.eval()
 
@@ -215,18 +212,36 @@ def mc_predict(
 
     predictions = []
 
+    for m in model.modules():
+        if isinstance(m, torch.nn.Dropout):
+            m.train()
+
     with torch.no_grad():
+
         for _ in range(samples):
-            pred = model(x)
-            predictions.append(pred.squeeze().cpu().numpy())
+
+            forecaster = RecursiveForecaster(model, DEVICE)
+
+            pred = forecaster.forecast(
+                sequence.copy(),
+                days
+            )
+
+            # Keep only the selected forecast day
+            predictions.append(pred[-1])
 
     predictions = np.stack(predictions)
 
     mean_prediction = predictions.mean(axis=0)
-    std_prediction = predictions.std(axis=0)
-    confidence = np.exp(-std_prediction.mean()) * 100
 
-    return mean_prediction, std_prediction, confidence
+    uncertainty = predictions.std(axis=0)
+
+    confidence = 100 * np.exp(
+        -np.nanmean(uncertainty) /
+        (np.nanstd(mean_prediction) + 1e-6)
+    )
+    confidence = np.clip(confidence, 0, 100)
+    return mean_prediction, uncertainty, confidence
 
 STREAMLIT_BG = "#0E1117"
 
@@ -256,6 +271,7 @@ def plot_map(data, title, cmap, vmin=None, vmax=None, center=None, label=""):
             vmax=vmax
         )
     else:
+
         limit = max(abs(vmin), abs(vmax))
 
         im = ax.pcolormesh(
@@ -322,9 +338,9 @@ with c1:
     )
 
 with c2:
-    forecast_horizon = st.selectbox(
-        "Forecast Horizon",
-        [1]
+    forecast_day = st.selectbox(
+        "Forecast Day",
+        range(1, 8)
     )
 
 with c3:
@@ -355,7 +371,7 @@ of rainfall and temperature observations
 as input.
 
 ### Forecast Horizon
-Currently supports **1-day ahead**
+Supports recursive forecasting up to **7 days**.
 prediction.
 
 ### Monte Carlo Samples
@@ -392,41 +408,39 @@ X, y = dataset[sample]
 
 X = X.unsqueeze(0).to(DEVICE)
 
-truth = y.squeeze().numpy()
+truth = np.nan_to_num(
+    test_ds["rainfall"].isel(
+        time=sample + WINDOW_SIZE + forecast_day - 1
+    ).values,
+    nan=0.0
+)
 
 # ---------------------------------------------------------
 # Monte Carlo Prediction
 # ---------------------------------------------------------
 
-if run:
+sequence = X.squeeze(0).cpu().numpy()
 
-    prediction, uncertainty, confidence = mc_predict(
-        model,
-        X,
-        samples=mc_samples
-    )
-
-else:
-
-    prediction, uncertainty, confidence = mc_predict(
-        model,
-        X,
-        samples=MC_SAMPLES
-    )
+prediction, uncertainty, confidence = mc_predict(
+    model,
+    sequence,
+    days=forecast_day,
+    samples=mc_samples
+)
 
 difference = prediction - truth
 
-rmse = np.sqrt(
-    np.mean(
-        difference ** 2
-    )
+valid_mask = ~np.isnan(truth)
+
+difference_metric = (
+    prediction[valid_mask]
+    - truth[valid_mask]
 )
 
-mae = np.mean(
-    np.abs(
-        difference
-    )
-)
+rmse = np.sqrt(np.mean(difference_metric**2))
+mae = np.mean(np.abs(difference_metric))
+
+difference = prediction - truth
 
 if np.std(truth) == 0 or np.std(prediction) == 0:
     correlation = np.nan
@@ -446,10 +460,12 @@ confidence_interval = (
 # ---------------------------------------------------------
 # Forecast Summary
 # ---------------------------------------------------------
+from datetime import timedelta
 
+predicted_date = selected_date + timedelta(days=forecast_day - 1)
 st.subheader("Forecast Summary")
 
-c1, c2, c3, c4 = st.columns(4)
+c1, c2, c3, c4, c5, c6 = st.columns(6)
 
 c1.metric(
     "Forecast Date",
@@ -457,16 +473,26 @@ c1.metric(
 )
 
 c2.metric(
+    "Prediction Date",
+    str(predicted_date)
+)
+
+c3.metric(
+    "Forecast Horizon",
+    f"{forecast_day} Day{'s' if forecast_day > 1 else ''}"
+)
+
+c4.metric(
     "Average Rainfall",
     f"{prediction.mean():.2f}"
 )
 
-c3.metric(
+c5.metric(
     "Confidence",
     f"{confidence:.1f}%"
 )
 
-c4.metric(
+c6.metric(
     "RMSE",
     f"{rmse:.4f}"
 )
@@ -526,11 +552,11 @@ with forecast_tab:
 
     with col1:
 
-        st.subheader("Ground Truth")
+        st.subheader(f"Ground Truth (Day {forecast_day})")
 
         fig = plot_map(
             truth,
-            "Observed Rainfall",
+            f"Observed Rainfall (Day {forecast_day})",
             cmap=cmap,
             vmin=vmin,
             vmax=vmax,
@@ -547,11 +573,11 @@ with forecast_tab:
 
     with col2:
 
-        st.subheader("AI Prediction")
+        st.subheader(f"Prediction (Day {forecast_day})")
 
         fig = plot_map(
             prediction,
-            "Predicted Rainfall",
+            f"Predicted Rainfall (Day {forecast_day})",
             cmap=cmap,
             vmin=vmin,
             vmax=vmax,
@@ -899,7 +925,7 @@ ConvLSTM (Convolutional Long Short-Term Memory)
 
 **Forecast Horizon**
 
-1 day
+1-7 days (recursive)
 
 **Monte Carlo Samples**
 

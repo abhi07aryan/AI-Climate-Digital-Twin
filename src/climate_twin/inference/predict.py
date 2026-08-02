@@ -4,6 +4,8 @@ import gdown
 import matplotlib.pyplot as plt
 import numpy as np
 from pathlib import Path
+from climate_twin.evaluation.evaluate import DEVICE
+from climate_twin.forecasting.recursive_forecast import RecursiveForecaster
 from climate_twin.preprocessing.split import TimeSeriesSplit
 from climate_twin.preprocessing.normalize import ClimateNormalizer
 from climate_twin.ml.dataset import ClimateTorchDataset
@@ -136,24 +138,38 @@ def main():
     # --------------------------------------------------------
 
     sample = 0
+    forecast_day = 1        # Change to 1–7
 
     X, y = test_dataset[sample]
 
-    # Save temperatures BEFORE moving to GPU
-    tmax = X[-1, FEATURES.index("tmax")].numpy()
-    tmin = X[-1, FEATURES.index("tmin")].numpy()
+    # Save original sequence before moving to GPU
+    sequence = X.numpy()
 
-    X = X.unsqueeze(0).to(device)
+    # Save temperatures
+    tmax = sequence[-1, FEATURES.index("tmax")]
+    tmin = sequence[-1, FEATURES.index("tmin")]
 
     with torch.no_grad():
-        prediction = model(X)
 
-    prediction = prediction.squeeze().cpu().numpy()
+        forecaster = RecursiveForecaster(model, device)
+
+        predictions = forecaster.forecast(
+            sequence,
+            days=7
+        )
+
+    # Select which forecast day to evaluate
+    prediction = predictions[forecast_day - 1]
+
+    # Ground truth for the selected day
+    truth = test["rainfall"].isel(
+        time=sample + WINDOW_SIZE + forecast_day - 1
+    ).values
+
     rain = prediction
+
     flood = compute_flood_risk(rain)
     drought = compute_drought(rain, tmax, tmin)
-
-    truth = y.squeeze().cpu().numpy()
 
     error = prediction - truth
 

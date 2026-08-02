@@ -112,6 +112,7 @@ def add_up_cities(ax):
             ),
             zorder=21,
         )
+
 # ----------------------------------------------------
 # Streamlit
 # ----------------------------------------------------
@@ -120,7 +121,6 @@ st.set_page_config(
     page_title="Climate Digital Twin",
     layout="wide"
 )
-
 st.title("Climate Digital Twin")
 
 # ----------------------------------------------------
@@ -148,7 +148,6 @@ def load_model():
     model.eval()
 
     return model
-
 
 # ----------------------------------------------------
 # Load Dataset
@@ -443,10 +442,12 @@ The dashboard then compares both forecasts and highlights the impact of the simu
 if run:
 
     forecast_days = forecast_options[selected]
-    # Find the selected date in the dataset
+
+    # Find selected date
     sample = np.where(
         forecast_dates == selected_date
     )[0][0]
+
     X, y = dataset[sample]
 
     sequence = X.numpy()
@@ -455,29 +456,28 @@ if run:
     # Baseline
     # -------------------------
 
-
     baseline_mean, baseline_std, baseline_conf = mc_recursive_predict(
         model,
         sequence,
         forecast_days,
         mc_samples
     )
+
     # -------------------------
     # Scenario
     # -------------------------
 
-    scenario = ClimateScenario(sequence)
+    scenario_obj = ClimateScenario(sequence)
 
-    scenario.increase_temperature(
+    scenario_obj.increase_temperature(
         temperature
     )
 
-    scenario.multiply_rainfall(
+    scenario_obj.multiply_rainfall(
         rainfall
     )
 
-    modified_sequence = scenario.get_sequence()
-
+    modified_sequence = scenario_obj.get_sequence()
 
     scenario_mean, scenario_std, scenario_conf = mc_recursive_predict(
         model,
@@ -486,21 +486,71 @@ if run:
         mc_samples
     )
 
+    # -------------------------
+    # SAVE RESULTS
+    # -------------------------
+
+    st.session_state["baseline_mean"] = baseline_mean
+    st.session_state["baseline_std"] = baseline_std
+    st.session_state["baseline_conf"] = baseline_conf
+
+    st.session_state["scenario_mean"] = scenario_mean
+    st.session_state["scenario_std"] = scenario_std
+    st.session_state["scenario_conf"] = scenario_conf
+
+    st.session_state["result_forecast_days"] = forecast_days
+
+    # Save scenario settings used for these results
+    st.session_state["result_temperature"] = temperature
+    st.session_state["result_rainfall"] = rainfall
+
+
+# ====================================================
+# DISPLAY SAVED RESULTS
+# ====================================================
+
+if "baseline_mean" in st.session_state:
+
+    baseline_mean = st.session_state["baseline_mean"]
+    baseline_std = st.session_state["baseline_std"]
+    baseline_conf = st.session_state["baseline_conf"]
+
+    scenario_mean = st.session_state["scenario_mean"]
+    scenario_std = st.session_state["scenario_std"]
+    scenario_conf = st.session_state["scenario_conf"]
+
+    result_forecast_days = st.session_state["result_forecast_days"]
+
+    # -------------------------
+    # Day selector
+    # -------------------------
+
     col1, col2 = st.columns([1, 4])
 
     with col1:
+
         day = st.selectbox(
             "Display Forecast Day",
-            range(1, forecast_days + 1)
+            range(1, result_forecast_days + 1),
+            key="forecast_display_day"
         )
 
-    base = baseline_mean[day-1]
+    # -------------------------
+    # Select requested day
+    # -------------------------
 
-    scen = scenario_mean[day-1]
+    base = baseline_mean[day - 1]
+    scen = scenario_mean[day - 1]
 
-    base_uncertainty = baseline_std[day-1]
+    from datetime import timedelta
+    prediction_date = pd.to_datetime(selected_date) + pd.Timedelta(days=day - 1)
 
-    scenario_uncertainty = scenario_std[day-1]
+    base_uncertainty = baseline_std[day - 1]
+    scenario_uncertainty = scenario_std[day - 1]
+
+    # -------------------------
+    # Colour limits
+    # -------------------------
 
     vmin = min(
         np.nanmin(base),
@@ -538,12 +588,29 @@ if run:
         test["rainfall"].isel(time=0).values
     )
 
-    base                 = np.ma.masked_where(~valid_mask, base)
-    scen                 = np.ma.masked_where(~valid_mask, scen)
-    base_uncertainty     = np.ma.masked_where(~valid_mask, base_uncertainty)
+    base = np.ma.masked_where(~valid_mask, base)
+    scen = np.ma.masked_where(~valid_mask, scen)
+    diff = np.ma.masked_where(~valid_mask, diff)
+    base_uncertainty = np.ma.masked_where(~valid_mask, base_uncertainty)
     scenario_uncertainty = np.ma.masked_where(~valid_mask, scenario_uncertainty)
-    diff                 = np.ma.masked_where(~valid_mask, diff)
+    st.subheader("Forecast Details")
 
+    c1, c2, c3 = st.columns(3)
+
+    c1.metric(
+        "Forecast Start",
+        str(selected_date)
+    )
+
+    c2.metric(
+        "Prediction Date",
+        prediction_date.strftime("%d %b %Y")
+    )
+
+    c3.metric(
+        "Forecast Day",
+        f"Day {day}"
+    )
     # -------------------------
     # Maps
     # -------------------------

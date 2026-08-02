@@ -71,11 +71,11 @@ class RecursiveForecaster:
                 # Update sequence
                 # -----------------------------
 
+                alpha = 0.7
+
                 new_step = sequence[-1].copy()
 
-                # rainfall channel
-
-                new_step[0] = pred
+                new_step[0] = (alpha * pred + (1-alpha) * sequence[-1][0])
 
                 sequence = np.concatenate(
 
