@@ -117,6 +117,9 @@ st.set_page_config(
 
 st.title("AI Rainfall Forecasting")
 
+with open(Path("assets/theme.css")) as f:
+    st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
+
 st.markdown("""
 Predict daily rainfall using a trained ConvLSTM model.
 Forecasts include uncertainty estimation using
@@ -243,9 +246,9 @@ def mc_predict(model, sequence, days, samples=MC_SAMPLES):
     confidence = np.clip(confidence, 0, 100)
     return mean_prediction, uncertainty, confidence
 
-STREAMLIT_BG = "#0E1117"
+STREAMLIT_BG = (17/255, 24/255, 39/255, 0.35)
 
-def plot_map(data, title, cmap, vmin=None, vmax=None, center=None, label=""):
+def plot_map(data, title, cmap, vmin=None, vmax=None, center=None, label="", export=False, filename="map.png"):
 
     data = np.ma.masked_invalid(data)
 
@@ -318,7 +321,25 @@ def plot_map(data, title, cmap, vmin=None, vmax=None, center=None, label=""):
     cbar.set_label(label, color="white")
 
     fig.tight_layout()
+    if export:
 
+        import io
+
+        buf = io.BytesIO()
+
+        fig.savefig(
+            buf,
+            format="png",
+            dpi=300,
+            bbox_inches="tight"
+        )
+
+        st.download_button(
+            "Download Map",
+            data=buf.getvalue(),
+            file_name=filename,
+            mime="image/png"
+        )
     return fig
 
 # ---------------------------------------------------------
@@ -560,7 +581,9 @@ with forecast_tab:
             cmap=cmap,
             vmin=vmin,
             vmax=vmax,
-            label="mm/day"
+            label="mm/day",
+            export=True,
+            filename=f"ground_truth_day_{predicted_date}.png"
         )
 
         st.pyplot(fig)
@@ -581,7 +604,9 @@ with forecast_tab:
             cmap=cmap,
             vmin=vmin,
             vmax=vmax,
-            label="mm/day"
+            label="mm/day",
+            export=True,
+            filename=f"prediction_day_{predicted_date}.png"
         )
 
         st.pyplot(fig)
@@ -613,7 +638,9 @@ with forecast_tab:
             vmin=-limit,
             vmax=limit,
             center=0,
-            label="mm/day"
+            label="mm/day",
+            export=True,
+            filename=f"difference_day_{predicted_date}.png"
         )
 
         st.pyplot(fig)
@@ -634,7 +661,9 @@ with forecast_tab:
             cmap="inferno",
             vmin=0,
             vmax=np.nanmax(uncertainty),
-            label="Std. Dev."
+            label="Std. Dev.",
+            export=True,
+            filename=f"uncertainty_day_{predicted_date}.png"
         )
 
         st.pyplot(fig)
@@ -652,7 +681,9 @@ with flood_tab:
         cmap="Reds",
         vmin=flood_min,
         vmax=flood_max,
-        label="Risk"
+        label="Risk",
+        export=True,
+        filename=f"flood_risk_day_{predicted_date}.png"
     )
 
     st.pyplot(fig)
@@ -669,7 +700,9 @@ with drought_tab:
         cmap="YlOrBr",
         vmin=drought_min,
         vmax=drought_max,
-        label="Risk"
+        label="Risk",
+        export=True,
+        filename=f"drought_day_{predicted_date}.png"
     )
 
     st.pyplot(fig)

@@ -11,6 +11,10 @@ st.set_page_config(
 )
 
 st.title("Model Evaluation")
+
+with open(Path("assets/theme.css")) as f:
+    st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
+
 st.caption(
     "Evaluate the ConvLSTM model using quantitative metrics and visual comparisons."
 )
@@ -122,7 +126,7 @@ if show_hist:
 
         history = pd.read_csv(history_file)
 
-        STREAMLIT_BG = "#0E1117"
+        STREAMLIT_BG = (17/255, 24/255, 39/255, 0.35)
 
         fig, ax = plt.subplots(
             figsize=(8,4),

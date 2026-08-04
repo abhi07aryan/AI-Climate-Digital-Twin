@@ -27,6 +27,7 @@ UP_CITIES = {
     "Meerut":     (28.9845, 77.7064),
     "Jhansi":     (25.4484, 78.5685),
 }
+
 # ----------------------------------------------------
 # Configuration
 # ----------------------------------------------------
@@ -121,6 +122,10 @@ st.set_page_config(
     page_title="Climate Digital Twin",
     layout="wide"
 )
+
+with open(Path("assets/theme.css")) as f:
+    st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
+
 st.title("Climate Digital Twin")
 
 # ----------------------------------------------------
@@ -239,9 +244,9 @@ dataset, test, normalizer = load_dataset()
 lat = test.lat.values
 lon = test.lon.values
 
-STREAMLIT_BG = "#0E1117"
+STREAMLIT_BG = (17/255, 24/255, 39/255, 0.35)
 
-def plot_map(data, title, cmap, vmin=None, vmax=None, center=None, label=""):
+def plot_map(data, title, cmap, vmin=None, vmax=None, center=None, label="", export=False, filename="map.png"):
 
     data = np.ma.masked_invalid(data)
 
@@ -313,6 +318,25 @@ def plot_map(data, title, cmap, vmin=None, vmax=None, center=None, label=""):
     cbar.set_label(label, color="white")
 
     fig.tight_layout()
+    if export:
+
+        import io
+
+        buf = io.BytesIO()
+
+        fig.savefig(
+            buf,
+            format="png",
+            dpi=300,
+            bbox_inches="tight"
+        )
+
+        st.download_button(
+            "Download Map",
+            data=buf.getvalue(),
+            file_name=filename,
+            mime="image/png"
+        )
 
     return fig
 
@@ -542,7 +566,6 @@ if "baseline_mean" in st.session_state:
     base = baseline_mean[day - 1]
     scen = scenario_mean[day - 1]
 
-    from datetime import timedelta
     prediction_date = pd.to_datetime(selected_date) + pd.Timedelta(days=day - 1)
 
     base_uncertainty = baseline_std[day - 1]
@@ -560,27 +583,6 @@ if "baseline_mean" in st.session_state:
     vmax = max(
         np.nanmax(base),
         np.nanmax(scen)
-    )
-
-    st.divider()
-
-    st.subheader("Prediction Confidence")
-
-    c1, c2, c3 = st.columns(3)
-
-    c1.metric(
-        "Baseline",
-        f"{baseline_conf:.1f}%"
-    )
-
-    c2.metric(
-        "Scenario",
-        f"{scenario_conf:.1f}%"
-    )
-
-    c3.metric(
-        "Confidence Change",
-        f"{scenario_conf-baseline_conf:+.1f}%"
     )
 
     diff = scen - base
@@ -611,6 +613,111 @@ if "baseline_mean" in st.session_state:
         "Forecast Day",
         f"Day {day}"
     )
+
+    st.divider()
+    st.subheader("Simulation Summary")
+    m1, m2, m3 = st.columns(3)
+        
+    baseline = normalizer.inverse_transform_array(
+        base,
+        "rainfall"
+    )
+    
+    scenario = normalizer.inverse_transform_array(
+        scen,
+        "rainfall"
+    )
+    difference = scenario - base
+    m1.metric(
+        "Average Baseline Rainfall",
+        f"{baseline.mean():.3f}"
+    )
+    
+    m2.metric(
+        "Average Scenario Rainfall",
+        f"{scenario.mean():.3f}"
+    )
+    
+    m3.metric(
+        "Average Change",
+        f"{(difference).mean():+.3f}"
+    )
+    
+    m4, m5, m6 = st.columns(3)
+
+    m4.metric(
+        "Maximum Increase",
+        f"{difference.max():.3f}"
+    )
+    
+    m5.metric(
+        "Maximum Decrease",
+        f"{difference.min():.3f}"
+    )
+    
+    m6.metric(
+        "Maximum Uncertainty",
+        f"{scenario_uncertainty.max():.3f}"
+    )
+    
+    st.divider()
+
+    st.subheader("Prediction Confidence")
+
+    c1, c2, c3 = st.columns(3)
+
+    c1.metric(
+        "Baseline",
+        f"{baseline_conf:.1f}%"
+    )
+
+    c2.metric(
+        "Scenario",
+        f"{scenario_conf:.1f}%"
+    )
+
+    c3.metric(
+        "Confidence Change",
+        f"{scenario_conf-baseline_conf:+.1f}%"
+    )
+    
+    stats = {
+        "Metric": [
+            "Forecast Date",
+            "Forecast Day",
+            "Temperature Change (°C)",
+            "Rainfall Multiplier",
+            "Baseline Confidence (%)",
+            "Scenario Confidence (%)",
+            "Baseline Mean Rainfall (mm/day)",
+            "Scenario Mean Rainfall (mm/day)",
+            "Mean Difference (mm/day)",
+            "Max Difference (mm/day)"
+        ],
+
+        "Value": [
+            prediction_date.strftime("%Y-%m-%d"),
+            day,
+            temperature,
+            rainfall,
+            round(baseline_conf, 2),
+            round(scenario_conf, 2),
+            round(np.nanmean(base), 2),
+            round(np.nanmean(scen), 2),
+            round(np.nanmean(difference), 2),
+            round(np.nanmax(difference), 2)
+        ]
+    }
+    stats_df = pd.DataFrame(stats)
+    csv = stats_df.to_csv(index=False).encode("utf-8")
+
+    st.download_button(
+        label="Download Statistics (CSV)",
+        data=csv,
+        file_name=f"agni_stats_day_{day}.csv",
+        mime="text/csv"
+    )
+
     # -------------------------
     # Maps
     # -------------------------
@@ -627,7 +734,9 @@ if "baseline_mean" in st.session_state:
             cmap="Blues",
             vmin=vmin,
             vmax=vmax,
-            label="mm/day"
+            label="mm/day",
+            export=True,
+            filename=f"baseline_day_{day}.png"
         )
 
         st.pyplot(fig)
@@ -643,7 +752,9 @@ if "baseline_mean" in st.session_state:
             cmap="Blues",
             vmin=vmin,
             vmax=vmax,
-            label="mm/day"
+            label="mm/day",
+            export=True,
+            filename=f"scenario_day_{day}.png"
         )
 
         st.pyplot(fig)
@@ -658,7 +769,9 @@ if "baseline_mean" in st.session_state:
             cmap="RdBu_r",
             vmin=-limit,
             vmax=limit,
-            label="mm/day"
+            label="mm/day",
+            export=True,
+            filename=f"difference_day_{day}.png"
         )
 
         st.pyplot(fig)
@@ -679,7 +792,9 @@ if "baseline_mean" in st.session_state:
             cmap="inferno",
             vmin=0,
             vmax=np.nanmax(base_uncertainty),
-            label="Std. Dev."
+            label="Std. Dev.",
+            export=True,
+            filename=f"baseline_uncert_day_{day}.png"
         )
 
         st.pyplot(fig)
@@ -694,7 +809,9 @@ if "baseline_mean" in st.session_state:
             cmap="inferno",
             vmin=0,
             vmax=np.nanmax(scenario_uncertainty),
-            label="Std. Dev."
+            label="Std. Dev.",
+            export=True,
+            filename=f"scenario_uncert_day_{day}.png"
         )
 
         st.pyplot(fig)
@@ -714,55 +831,6 @@ if "baseline_mean" in st.session_state:
     # -------------------------
     # Statistics
     # -------------------------
-
-    st.divider()
-
-    st.subheader("Simulation Summary")
-    m1, m2, m3 = st.columns(3)
-    
-    baseline = normalizer.inverse_transform_array(
-        base,
-        "rainfall"
-    )
-
-    scenario = normalizer.inverse_transform_array(
-        scen,
-        "rainfall"
-    )
-    difference = scenario - base
-    m1.metric(
-        "Average Baseline Rainfall",
-        f"{baseline.mean():.3f}"
-    )
-
-    m2.metric(
-        "Average Scenario Rainfall",
-        f"{scenario.mean():.3f}"
-    )
-
-    m3.metric(
-        "Average Change",
-        f"{(difference).mean():+.3f}"
-    )
-
-    m4, m5, m6 = st.columns(3)
-
-    m4.metric(
-        "Maximum Increase",
-        f"{difference.max():.3f}"
-    )
-
-    m5.metric(
-        "Maximum Decrease",
-        f"{difference.min():.3f}"
-    )
-
-    m6.metric(
-        "Maximum Uncertainty",
-        f"{scenario_uncertainty.max():.3f}"
-    )
-
-    st.divider()
 
     st.subheader("Scenario Interpretation")
 

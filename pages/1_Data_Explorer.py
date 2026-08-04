@@ -121,6 +121,10 @@ st.set_page_config(
 )
 
 st.title("Climate Data Explorer")
+
+with open(Path("assets/theme.css")) as f:
+    st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
+
 st.caption(
     "Explore climate variables across the region through interactive spatial maps, temporal trends, and statistical summaries."
 )
@@ -279,9 +283,11 @@ st.caption(
         "No description available for this variable."
     )
 )
-st.caption(
-    f"Date : {str(ds.time.values[time_index])[:10]}"
-)
+c1,c2,c3,c4 = st.columns(4)
+c1.metric(
+        "Selected Date: ",
+        str(selected_date)
+    )
 
 # --------------------------------------------------
 # Spatial Variables
@@ -289,7 +295,7 @@ st.caption(
 cmap_name = CMAPS.get(variable, "viridis")
 vmin, vmax = COLOR_LIMITS.get(variable, (None, None))
 
-STREAMLIT_BG = "#0E1117"
+STREAMLIT_BG = (17/255, 24/255, 39/255, 0.35)
 
 if data.ndim == 3:
 
@@ -359,8 +365,27 @@ if data.ndim == 3:
     add_up_cities(ax)
 
     st.pyplot(fig)
+
+    import io
+
+    buf = io.BytesIO()
+
+    fig.savefig(
+        buf,
+        format="png",
+        dpi=300,
+        bbox_inches="tight"
+    )
+
+    st.download_button(
+        "Download Map",
+        data=buf.getvalue(),
+        file_name=f"baseline_day_{selected_date}.png",
+        mime="image/png"
+    )
+
     plt.close(fig)
-    
+        
     if show_stats:
         st.subheader("Statistics")
         c1, c2, c3, c4 = st.columns(4)
