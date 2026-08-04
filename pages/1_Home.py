@@ -197,6 +197,12 @@ perform interactive climate what-if analyses.
 
 st.divider()
 
+st.link_button(
+    "Github Repository",
+    "https://github.com/abhi07aryan/AI-Climate-Digital-Twin",
+    use_container_width=True
+)
+
 # ==========================================================
 # FOOTER
 # ==========================================================
