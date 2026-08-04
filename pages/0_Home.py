@@ -1,296 +1,222 @@
 import streamlit as st
+import base64
 
 st.set_page_config(
-    page_title="AGNI - AI Climate Digital Twin",
+    page_title="AGNI",
+    page_icon=" ",
     layout="wide"
 )
 
-# ---------------------------------------------------------
-# CSS
-# ---------------------------------------------------------
-
-st.markdown("""
-<style>
-
-.stApp{
-    background: linear-gradient(to bottom,#071426,#0d223b);
-    color:white;
-}
-
-h1,h2,h3{
-    color:white;
-}
-
-.hero{
-    background: linear-gradient(135deg,#102b4e,#0a5c8f);
-    padding:50px;
-    border-radius:20px;
-    text-align:center;
-    box-shadow:0px 5px 20px rgba(0,0,0,0.3);
-}
-
-.hero h1{
-    font-size:60px;
-    font-weight:700;
-}
-
-.hero h3{
-    color:#9ad8ff;
-}
-
-.metric-box{
-    background:#132c49;
-    padding:25px;
-    border-radius:15px;
-    text-align:center;
-    box-shadow:0px 0px 12px rgba(0,0,0,0.3);
-}
-
-.card{
-    background:#132c49;
-    padding:25px;
-    border-radius:15px;
-    min-height:300px;
-    box-shadow:0px 0px 12px rgba(0,0,0,0.3);
-
-    display:flex;
-    flex-direction:column;
-    justify-content:flex-start;
-
-    transition:0.3s;
-}
-
-.card:hover{
-    transform:translateY(-4px);
-}
-
-.pipeline{
-    background:#132c49;
-    padding:30px;
-    border-radius:20px;
-}
-
-.footer{
-    text-align:center;
-    color:gray;
-    padding:20px;
-}
-
-</style>
-""",unsafe_allow_html=True)
-
-# ---------------------------------------------------------
+# ==========================================================
 # HERO
-# ---------------------------------------------------------
+# ==========================================================
 
 st.markdown("""
-<div class='hero'>
+<div class="hero">
 
-<h1>🌍 AGNI</h1>
+<h1>AGNI</h1>
 
-<h3>AI Climate Digital Twin of India</h3>
+<h2>AI-Powered Climate Digital Twin</h2>
 
-<h4>Predict • Simulate • Analyze • Adapt</h4>
+<p>
+Predict future climate, simulate <b>what-if scenarios</b>,
+assess <b>flood & drought risks</b>, and generate
+<b>AI-powered insights</b> for climate resilience,
+disaster preparedness, and informed decision-making.
+</p>
 
 </div>
-""",unsafe_allow_html=True)
+""", unsafe_allow_html=True)
 
-st.write("")
+st.divider()
 
-c1,c2,c3=st.columns([2,1,1])
+# ==========================================================
+# QUICK STATS
+# ==========================================================
+
+c1,c2,c3,c4 = st.columns(4)
+
+with c1:
+    st.metric(
+        "Forecast Horizon",
+        "7 Days"
+    )
 
 with c2:
-    if st.button("Launch Dashboard", use_container_width=True):
-        st.switch_page("pages/1_Data_Explorer.py")
+    st.metric(
+        "Model",
+        "ConvLSTM"
+    )
 
 with c3:
-    st.link_button(
-        "GitHub",
-        "https://github.com/abhi07aryan/AI-Climate-Digital-Twin",
-        use_container_width=True
+    st.metric(
+        "Resolution",
+        "0.25° x 0.25°"
+    )
+
+with c4:
+    st.metric(
+        "Climate Variables",
+        "3"
     )
 
 st.divider()
 
-# ---------------------------------------------------------
-# METRICS
-# ---------------------------------------------------------
+# ==========================================================
+# FEATURES
+# ==========================================================
 
-st.subheader("Platform Capabilities")
 
-m1,m2,m3,m4=st.columns(4)
-
-m1.metric("AI (Deep Learning) Model", "ConvLSTM")
-m2.metric("Forecast Horizon", "7 Days")
-m3.metric("Region", "Uttar Pradesh")
-m4.metric("Monte Carlo", "10/20/30/50 Samples")
-
-st.divider()
-
-# ---------------------------------------------------------
-# APPLICATIONS
-# ---------------------------------------------------------
-
-st.subheader("Applications")
-
-c1,c2=st.columns(2)
-
-with c1:
-
-    st.markdown("""
-<div class='card'>
-
-<h2>Flood Preparedness</h2>
-
-Uses AI-based rainfall forecasting to estimate flood risk
-and identify vulnerable regions.
-
-✔ Heavy Rain Alerts
-
-✔ Flood Risk Mapping
-
-✔ Early Warning
-
-</div>
-""",unsafe_allow_html=True)
-
-with c2:
-
-    st.markdown("""
-<div class='card'>
-
-<h2>Drought Monitoring</h2>
-
-Predicts rainfall deficit and water stress using
-temperature and precipitation forecasts.
-
-✔ Rainfall Deficit
-
-✔ Water Stress
-
-✔ Climate Anomaly
-
-</div>
-""",unsafe_allow_html=True)
-
-st.write("")
-
-c3,c4=st.columns(2)
-
-with c3:
-
-    st.markdown("""
-<div class='card'>
-
-<h2>Climate Forecasting</h2>
-
-Forecast future climate variables using
-ConvLSTM deep learning.
-
-✔ Rainfall
-
-✔ Temperature
-
-✔ Multi-day Forecast
-
-</div>
-""",unsafe_allow_html=True)
-
-with c4:
-
-    st.markdown("""
-<div class='card'>
-
-<h2>Digital Twin</h2>
-
-Simulate climate scenarios and evaluate
-"What-if" conditions.
-
-✔ Scenario Analysis
-
-✔ AI Simulation
-
-✔ Decision Support
-
-</div>
-""",unsafe_allow_html=True)
-
-st.divider()
-
-# ---------------------------------------------------------
-# PIPELINE
-# ---------------------------------------------------------
-
-st.subheader("Model Pipeline")
+st.markdown("## Platform Features")
 
 st.markdown("""
-<div class='pipeline'>
+<div class="feature-grid">
 
-<h3 align='center'>
-
-IMD Climate Dataset
-
-⬇
-
-Feature Engineering
-
-⬇
-
-ConvLSTM AI Model
-
-⬇
-
-Climate Forecast
-
-⬇
-
-Digital Twin
-
-⬇
-
-Flood • Drought • Climate Analytics
-
-</h3>
-
+<div class="card">
+<h2>Forecasting</h2>
+<p>
+Generate rainfall forecasts up to seven days ahead
+using a ConvLSTM deep learning model trained on
+historical IMD climate observations.
+</p>
 </div>
 
-""",unsafe_allow_html=True)
+<div class="card">
+<h2>What-if Simulation</h2>
+<p>
+Modify rainfall and temperature to analyse future
+climate scenarios and compare impacts.
+</p>
+</div>
+
+<div class="card">
+<h2>Flood & Drought Assessment</h2>
+<p>
+Automatically convert rainfall forecasts into flood
+and drought risk maps for rapid disaster
+preparedness.
+</p>
+</div>
+
+<div class="card">
+<h2>ASTRAA AI</h2>
+<p>
+AI assistant capable of explaining predictions,
+uncertainty and climate impacts in natural language.
+</p>
+</div>
+
+</div>
+""", unsafe_allow_html=True)
 
 st.divider()
 
-# ---------------------------------------------------------
+# ==========================================================
+# HOW IT WORKS
+# ==========================================================
+
+st.markdown("## ⚙ How AGNI Works")
+
+st.markdown("""
+<div class="architecture">
+
+<div class="step">IMD & INSAT Climate Data</div>
+<div class="arrow">↓</div>
+
+<div class="step">Data Preprocessing</div>
+<div class="arrow">↓</div>
+
+<div class="step">ConvLSTM Deep Learning</div>
+<div class="arrow">↓</div>
+
+<div class="step">Recursive Forecasting</div>
+<div class="arrow">↓</div>
+
+<div class="step">Monte Carlo Uncertainty</div>
+<div class="arrow">↓</div>
+
+<div class="step">Flood & Drought Analysis</div>
+<div class="arrow">↓</div>
+
+<div class="step">Interactive Dashboard</div>
+
+</div>
+""", unsafe_allow_html=True)
+
+st.divider()
+
+# ==========================================================
+# CAPABILITIES
+# ==========================================================
+
+st.markdown("## Key Capabilities")
+
+left,right = st.columns(2)
+
+with left:
+
+    st.success("✔ Rainfall Forecasting")
+
+    st.success("✔ Flood Prediction")
+
+    st.success("✔ Drought Assessment")
+
+    st.success("✔ Recursive Multi-Day Forecasting")
+
+with right:
+
+    st.success("✔ Monte Carlo Uncertainty")
+
+    st.success("✔ Interactive Climate Simulation")
+
+    st.success("✔ Explainable AI")
+
+    st.success("✔ Decision Support Dashboard")
+
+    st.divider()
+
+# ==========================================================
 # ABOUT
-# ---------------------------------------------------------
+# ==========================================================
 
-st.subheader("About AGNI")
+st.markdown("## About AGNI")
+st.markdown("""
+<div class="card" style="height:150px;">
+<p>
+AGNI is an AI-powered Climate Digital Twin designed to
+support climate resilience through predictive analytics,
+scenario simulation and explainable AI.
 
-st.write("""
-AGNI (AI-powered Climate Digital Twin of India) is an intelligent
-decision-support platform that combines climate observations,
-deep learning and digital twin technology to forecast future
-weather conditions and simulate environmental scenarios.
-
-The platform uses **IMD climate datasets**, **ConvLSTM neural
-networks**, and interactive visualizations to support:
-
-- Climate Forecasting
-- Flood Preparedness
-- Drought Monitoring
-- Scenario Simulation
-- Disaster Management
-""")
+Using historical climate observations from the Indian
+Meteorological Department (IMD) and Indian National Satellite System (INSAT), AGNI predicts rainfall,
+assesses flood and drought risk and enables users to
+perform interactive climate what-if analyses.
+</p>
+</div>
+""", unsafe_allow_html=True)
 
 st.divider()
 
-# ---------------------------------------------------------
-# FOOTER
-# ---------------------------------------------------------
+st.link_button(
+    "Github Repository",
+    "https://github.com/abhi07aryan/AI-Climate-Digital-Twin",
+    use_container_width=True
+)
 
-st.markdown("""
-<div class='footer'>
+# ==========================================================
+# FOOTER
+# ==========================================================
+
+st.markdown(
+"""
+
+<div style="text-align:center;color:gray;padding:20px;">
 
 Made with ❤️ by Team 'A' Game
 
-APURVA MISHRA • AARTI PRIYADARSHINI • ABHI ARYAN • ADITYA SINHA
-</div>
-""",unsafe_allow_html=True)
+<b>Apurva Mishra</b> •
+<b>Aarti Priyadarshini</b> •
+<b>Abhi Aryan</b> •
+<b>Aditya Sinha</b>
+
+</div> """, unsafe_allow_html=True )

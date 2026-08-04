@@ -82,7 +82,7 @@ st.markdown("""
 
 pg = st.navigation(
     [
-        st.Page("pages/1_Home.py", title="Home", icon=":material/home:"),
+        st.Page("pages/0_Home.py", title="Home", icon=":material/home:"),
         st.Page("pages/1_Data_Explorer.py", title="Data Explorer", icon=":material/bar_chart:"),
         st.Page("pages/2_Model_Evaluation.py", title="Model Evaluation", icon=":material/analytics:"),
         st.Page("pages/3_Forecasting.py", title="Forecasting", icon=":material/cloud:"),
