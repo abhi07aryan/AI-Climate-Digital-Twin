@@ -718,14 +718,16 @@ record_years = pd.to_datetime(raw_ds["time"].values).year
 climatology_last_year = int(record_years.max())
 climatology_first_year = climatology_last_year - CLIMATOLOGY_YEARS + 1
 
-forecast_options = {"1 Day": 1, "3 Days": 3, "5 Days": 5, "7 Days": 7}
-
 c1, c2, c3 = st.columns([1, 1, 1])
 
 with c1:
+    import pandas as pd
+
+    DEFAULT_DATE = pd.Timestamp("2024-07-25").date()
+
     selected_date = st.date_input(
         "Forecast Date",
-        value=forecast_dates[0],
+        value=DEFAULT_DATE,
         min_value=forecast_dates[0],
         max_value=forecast_dates[-1],
     )
@@ -738,7 +740,7 @@ c4, c5 = st.columns(2)
 with c4:
     temperature = st.slider(
         "Mean Temperature Change (°C)",
-        min_value=-2.0, max_value=3.0, value=0.0, step=0.5,
+        min_value=-2.0, max_value=3.0, value=-2.0, step=0.5,
         format="%.1f °C",
         help=(
             "Area-weighted mean warming applied to the linear sensitivity. "
@@ -1074,16 +1076,9 @@ if "sensitivity_mean" in st.session_state:
     # -------------------------
     # Day selector
     # -------------------------
-    col1, _ = st.columns([1, 4])
-    with col1:
-        day = st.selectbox(
-            "Display Forecast Day",
-            range(1, result_forecast_days + 1),
-            key="forecast_display_day",
-        )
-
-    prediction_date = result_date + pd.Timedelta(days=day - 1)
-    idx = day - 1
+    day = 1
+    idx = 0
+    prediction_date = result_date
 
     valid_mask = ~np.isnan(test["rainfall"].isel(time=0).values)
 
@@ -1118,11 +1113,10 @@ if "sensitivity_mean" in st.session_state:
     # -------------------------
     st.subheader("Forecast Details")
 
-    d1, d2, d3, d4 = st.columns(4)
-    d1.metric("Forecast Start", str(result_date.date()))
-    d2.metric("Prediction Date", prediction_date.strftime("%d %b %Y"))
-    d3.metric("Forecast Day", f"Day {day}")
-    d4.metric("Baseline Samples", f"{int(baseline_counts[idx])} yrs")
+    d1, d2, d3 = st.columns(3)
+    d1.metric("Forecast Date", prediction_date.strftime("%d %b %Y"))
+    d2.metric("Baseline Samples", f"{int(baseline_counts[idx])} yrs")
+    d3.metric("MC Samples", st.session_state["result_mc_samples"])
 
     st.caption(
         f"Baseline: observed mean for this calendar date over "

@@ -182,27 +182,29 @@ col1, col_from, col_to, col3, col4 = st.columns(
     vertical_alignment="bottom"
 )
 
+DEFAULT_START = pd.Timestamp("2024-07-25").date()
+DEFAULT_END = pd.Timestamp("2024-07-25").date()
+
 # -----------------------------
 # Date Range Selector (From / To)
 # -----------------------------
 with col_from:
     start_date = st.date_input(
         "From",
-        value=available_dates[0],
+        value=DEFAULT_START,
         min_value=available_dates[0],
         max_value=available_dates[-1],
-        key="date_from"
+        key="date_from",
     )
 
 with col_to:
     end_date = st.date_input(
         "To",
-        value=available_dates[0],
+        value=DEFAULT_END,
         min_value=available_dates[0],
         max_value=available_dates[-1],
-        key="date_to"
+        key="date_to",
     )
-
 
 days_since_start = (
     pd.Timestamp(start_date)
@@ -290,7 +292,6 @@ data_range = data.sel(time=slice(str(start_date), str(end_date)))
 # Spatial Variables
 # --------------------------------------------------
 cmap_name = CMAPS.get(variable, "viridis")
-vmin, vmax = COLOR_LIMITS.get(variable, (None, None))
 
 STREAMLIT_BG = (17/255, 24/255, 39/255, 0.35)
 with map_tab:
@@ -330,7 +331,18 @@ with map_tab:
             lon[valid_cols[0]:valid_cols[-1]+1],
             lat[valid_rows[0]:valid_rows[-1]+1]
         )
+        if variable in ["rainfall", "rain_7day"]:
 
+            values = image.values[np.isfinite(image.values)]
+
+            vmin = 0
+            vmax = np.percentile(values, 99)
+
+            # Prevent a tiny range on dry days
+            vmax = max(vmax, 5)
+
+        else:
+            vmin, vmax = COLOR_LIMITS.get(variable, (None, None))
         im = ax.pcolormesh(
             lon2d,
             lat2d,
@@ -508,7 +520,40 @@ with graph_tab:
         linewidth=2,
         color="#00C2FF"
     )
+    valid = np.isfinite(trend_series.values)
 
+    time = trend_series.time.values
+
+    # Convert to years since first observation
+    x = (time - time[0]) / np.timedelta64(1, "D") / 365.25
+    y = trend_series.values
+
+    # Keep only finite values
+    mask = np.isfinite(x) & np.isfinite(y)
+
+    x = x[mask]
+    y = y[mask]
+    legend = ax.legend(frameon=False)
+
+    for text in legend.get_texts():
+        text.set_color("white")
+    if len(x) >= 2:
+        slope, intercept = np.polyfit(x, y, 1)
+        trendline = slope * x + intercept
+
+        ax.plot(
+            time[mask],
+            trendline,
+            "--",
+            color="red",
+            linewidth=2,
+            label="Trend"
+        )
+        
+    else:
+        st.warning("Not enough valid data to compute trend.")
+
+    ax.legend(frameon=False)
     ax.grid(
         alpha=0.25,
         linestyle="--"

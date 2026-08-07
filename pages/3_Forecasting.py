@@ -350,11 +350,16 @@ st.subheader("Forecast Settings")
 c1, c2, c3, c4 = st.columns([2, 1, 1, 1])
 
 with c1:
+    DEFAULT_DATE = pd.Timestamp("2024-08-13").date()
+
+    if DEFAULT_DATE not in forecast_dates:
+        DEFAULT_DATE = forecast_dates[0]
+
     selected_date = st.date_input(
         "Forecast Date",
-        value=forecast_dates[0],
+        value=DEFAULT_DATE,
         min_value=forecast_dates[0],
-        max_value=forecast_dates[-1]
+        max_value=forecast_dates[-1],
     )
 
 with c2:
@@ -391,7 +396,7 @@ of rainfall and temperature observations
 as input.
 
 ### Forecast Horizon
-Supports recursive forecasting up to **7 days**.
+Supports recursive forecasting up to **7 days**
 prediction.
 
 ### Monte Carlo Samples
