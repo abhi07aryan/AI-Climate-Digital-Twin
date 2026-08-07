@@ -3,7 +3,6 @@ import geopandas as gpd
 
 from climate_twin.logger import logger
 
-
 class ShapeLoader:
 
     def load(self, filepath):

@@ -1,6 +1,6 @@
 Metric,Value
-Average RMSE,0.0787791833281517
-Average MAE,0.013626561500132084
-Average Correlation,0.5909052314988442
-Average Confidence (%),97.7479019165039
-Average Uncertainty,0.022782836109399796
+Average RMSE,0.31829461455345154
+Average MAE,0.14537927508354187
+Average Correlation,0.6444242734586482
+Average Confidence (%),100.0
+Average Uncertainty,2.4514799079611294e-08

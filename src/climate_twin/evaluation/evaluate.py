@@ -24,7 +24,7 @@ DATASET = Path("data/processed/climate_up_compressed.nc")
 def download_dataset():
     DATASET.parent.mkdir(parents=True, exist_ok=True)
 
-    file_id = "1Ld7oVZJ5XCFi6o8ZPZ0iM9vErvmQTmZu"
+    file_id = "1jqMmwyXjB0gxQpMvNdOx283-YrKJo9dq"
 
     gdown.download(
         id=file_id,
@@ -40,21 +40,17 @@ MODEL = "models/convlstm_best.pth"
 WINDOW_SIZE = 30
 
 FEATURES = [
-        "rainfall",
-        "tmax",
-        "tmin"]
-    #     "temp_mean",
-    #     "temp_range",
-    #     "rain_7day",
-    #     "rain_30day",
-    #     "rain_lag1",
-    #     "rain_lag3",
-    #     "rain_lag7",
-    #     "month",
-    #     "season",
-    #     "dayofyear",
-    #     "rain_anomaly"
-    # ]
+    "rainfall",
+    "tmax",
+    "tmin",
+    "temp_mean",
+    "temp_range",
+    "rain_7day",
+    "rain_30day",
+    "month",
+    "dayofyear",
+    "rain_anomaly",
+]
 
 DEVICE = torch.device(
     "cuda" if torch.cuda.is_available() else "cpu"
@@ -64,7 +60,7 @@ MC_SAMPLES = 30
 
 def mc_predict(model, x, samples=MC_SAMPLES):
 
-    model.train()      # Enable dropout
+    model.eval()      # Enable dropout
 
     predictions = []
 
@@ -108,7 +104,18 @@ def main():
 
     normalizer = ClimateNormalizer()
 
-    normalizer.fit(train, FEATURES)
+    NORMALIZE = [
+        "rainfall",
+        "tmax",
+        "tmin",
+        "temp_mean",
+        "temp_range",
+        "rain_7day",
+        "rain_30day",
+        "rain_anomaly",
+    ]
+
+    normalizer.fit(train, NORMALIZE)
 
     test = normalizer.transform(test)
 
@@ -129,7 +136,7 @@ def main():
 
     model = ConvLSTM(
         input_channels=len(FEATURES),
-        hidden_channels=8,
+        hidden_channels=32,
         output_channels=1
     )
 
@@ -207,10 +214,13 @@ def main():
                 np.abs(difference)
             )
 
-            correlation = np.corrcoef(
-                truth.flatten(),
-                prediction.flatten()
-            )[0, 1]
+            if np.std(truth) > 0 and np.std(prediction) > 0:
+                correlation = np.corrcoef(
+                    truth.flatten(),
+                    prediction.flatten()
+                )[0, 1]
+            else:
+                correlation = np.nan
 
             # -----------------------------------------
             # Store metrics

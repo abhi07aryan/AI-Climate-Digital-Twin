@@ -8,57 +8,40 @@ class ClimatePlots:
     def prediction(
         truth,
         prediction,
-        title="Prediction",
-        save_path = None
+        variable="Rainfall",
+        cmap="Blues",
+        save_path=None
     ):
 
-        vmin = min(
-            np.nanmin(truth),
-            np.nanmin(prediction)
-        )
+        vmin = min(np.nanmin(truth), np.nanmin(prediction))
+        vmax = max(np.nanmax(truth), np.nanmax(prediction))
 
-        vmax = max(
-            np.nanmax(truth),
-            np.nanmax(prediction)
-        )
+        fig, ax = plt.subplots(1, 2, figsize=(12, 5))
 
-        fig, ax = plt.subplots(
-            1,
-            2,
-            figsize=(12,5)
-        )
-
-        im1 = ax[0].imshow(
+        ax[0].imshow(
             truth,
-            cmap="Blues",
+            cmap=cmap,
             vmin=vmin,
             vmax=vmax
         )
-
-        ax[0].set_title("Ground Truth")
+        ax[0].set_title(f"{variable} - Ground Truth")
         ax[0].axis("off")
 
-        im2 = ax[1].imshow(
+        im = ax[1].imshow(
             prediction,
-            cmap="Blues",
+            cmap=cmap,
             vmin=vmin,
             vmax=vmax
         )
-
-        ax[1].set_title(title)
+        ax[1].set_title(f"{variable} - Prediction")
         ax[1].axis("off")
 
-        fig.colorbar(
-            im2,
-            ax=ax,
-            shrink=0.75
-        )
+        fig.colorbar(im, ax=ax, shrink=0.75)
 
         plt.tight_layout()
 
         if save_path:
-            from pathlib import Path
-            Path(save_path).parent.mkdir(parents=True, exist_ok=True)
+            os.makedirs(os.path.dirname(save_path), exist_ok=True)
             plt.savefig(save_path, dpi=200, bbox_inches="tight")
 
         plt.close()
@@ -68,12 +51,13 @@ class ClimatePlots:
     def error(
         truth,
         prediction,
-        save_path = None
+        variable="Rainfall",
+        save_path=None
     ):
 
         error = prediction - truth
 
-        plt.figure(figsize=(6,6))
+        plt.figure(figsize=(6, 6))
 
         plt.imshow(
             error,
@@ -82,15 +66,14 @@ class ClimatePlots:
 
         plt.colorbar()
 
-        plt.title("Prediction Error")
+        plt.title(f"{variable} Prediction Error")
 
         plt.axis("off")
 
         plt.tight_layout()
 
         if save_path:
-            from pathlib import Path
-            Path(save_path).parent.mkdir(parents=True, exist_ok=True)
+            os.makedirs(os.path.dirname(save_path), exist_ok=True)
             plt.savefig(save_path, dpi=200, bbox_inches="tight")
 
         plt.close()
@@ -139,20 +122,21 @@ class ClimatePlots:
     @staticmethod
     def training(
         train_loss,
-        valid_loss
+        valid_loss,
+        variable="Rainfall"
     ):
 
         epochs = range(
             1,
-            len(train_loss)+1
+            len(train_loss) + 1
         )
 
-        plt.figure(figsize=(7,5))
+        plt.figure(figsize=(7, 5))
 
         plt.plot(
             epochs,
             train_loss,
-            label="Train"
+            label="Training"
         )
 
         plt.plot(
@@ -162,10 +146,8 @@ class ClimatePlots:
         )
 
         plt.xlabel("Epoch")
-
         plt.ylabel("Loss")
-
-        plt.title("Training Curve")
+        plt.title(f"{variable} Training & Validation Loss")
 
         plt.legend()
 
@@ -178,26 +160,21 @@ class ClimatePlots:
     @staticmethod
     def time_series(
         truth,
-        prediction
+        prediction,
+        variable="Rainfall"
     ):
 
-        plt.figure(figsize=(10,4))
+        plt.figure(figsize=(10, 4))
 
-        plt.plot(
-            truth,
-            label="Ground Truth"
-        )
-
-        plt.plot(
-            prediction,
-            label="Prediction"
-        )
-
-        plt.legend()
+        plt.plot(truth, label="Ground Truth")
+        plt.plot(prediction, label="Prediction")
 
         plt.xlabel("Time")
+        plt.ylabel(variable)
 
-        plt.ylabel("Rainfall")
+        plt.title(f"{variable} Time Series")
+
+        plt.legend()
 
         plt.tight_layout()
 

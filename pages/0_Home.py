@@ -1,5 +1,4 @@
 import streamlit as st
-import base64
 
 st.set_page_config(
     page_title="AGNI",
@@ -73,6 +72,15 @@ st.markdown("""
 <div class="feature-grid">
 
 <div class="card">
+<h2>Data Explorer</h2>
+<p>
+Explore rainfall and temperature data for the
+past 75 years along with other features such
+as rain anomaly, past 7 days average, etc.
+</p>
+</div>
+
+<div class="card">
 <h2>Forecasting</h2>
 <p>
 Generate rainfall forecasts up to seven days ahead
@@ -98,12 +106,6 @@ preparedness.
 </p>
 </div>
 
-<div class="card">
-<h2>ASTRAA AI</h2>
-<p>
-AI assistant capable of explaining predictions,
-uncertainty and climate impacts in natural language.
-</p>
 </div>
 
 </div>
@@ -220,3 +222,104 @@ Made with ❤️ by Team 'A' Game
 <b>Aditya Sinha</b>
 
 </div> """, unsafe_allow_html=True )
+
+
+
+# from pathlib import Path
+
+# import gdown
+# import geopandas as gpd
+# import folium
+# import streamlit as st
+# import xarray as xr
+# import numpy as np
+# import matplotlib.pyplot as plt
+# from matplotlib.colors import Normalize
+# import matplotlib.colors as mcolors
+# from streamlit_folium import st_folium
+
+# DATASET = Path("data/processed/climate_up_clip.nc")
+
+# def download_dataset():
+#     DATASET.parent.mkdir(parents=True, exist_ok=True)
+
+#     gdown.download(
+#         id="1sZeQ45vGjq-7xx1RfLeoBDg_ZQqHmSWT",
+#         output=str(DATASET),
+#         quiet=False,
+#     )
+
+# @st.cache_data
+# def load_dataset():
+#     if not DATASET.exists():
+#         download_dataset()
+#     return xr.open_dataset(DATASET)
+
+# ds = load_dataset()
+
+# # UP boundary
+# up = gpd.read_file("data/raw/shapefiles/UP_Boundary/UP_Boundary.shp")
+# up = up.to_crs(epsg=4326)
+
+# # --------------------------
+# # Rainfall for selected day
+# # --------------------------
+# rain = ds["rainfall"].sel(time="2024-07-08")
+
+# # Create map
+# m = folium.Map(tiles="CartoDB positron")
+
+# # Fit to UP boundary
+# m.fit_bounds([
+#     [up.total_bounds[1], up.total_bounds[0]],
+#     [up.total_bounds[3], up.total_bounds[2]],
+# ])
+
+# # Colour map
+# norm = Normalize(
+#     vmin=0,
+#     vmax=np.nanpercentile(rain.values, 98)
+# )
+
+# cmap = plt.cm.turbo
+
+# res = 0.25  # IMD grid resolution
+
+# # --------------------------
+# # Draw rainfall cells
+# # --------------------------
+# for i, lat in enumerate(rain.lat.values):
+#     for j, lon in enumerate(rain.lon.values):
+
+#         value = rain.values[i, j]
+
+#         if np.isnan(value):
+#             continue
+
+#         color = mcolors.to_hex(cmap(norm(value)))
+
+#         folium.Rectangle(
+#             bounds=[
+#                 [lat - res/2, lon - res/2],
+#                 [lat + res/2, lon + res/2],
+#             ],
+#             stroke=False,
+#             fill=True,
+#             fill_color=color,
+#             fill_opacity=0.75,
+#             popup=f"{value:.1f} mm",
+#         ).add_to(m)
+
+# # --------------------------
+# # UP Boundary
+# # --------------------------
+# folium.GeoJson(
+#     up,
+#     style_function=lambda x: {
+#         "fillOpacity": 0,
+#         "color": "black",
+#         "weight": 2,
+#     },
+# ).add_to(m)
+
+# st_folium(m, width=900, height=650)

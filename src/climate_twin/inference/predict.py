@@ -19,11 +19,11 @@ def main():
     # Configuration
     # --------------------------------------------------------
 
-    DATASET = Path("data/processed/climate_up_compressed.nc")
+    DATASET = Path("data/processed/climate_up_clip.nc")
     def download_dataset():
         DATASET.parent.mkdir(parents=True, exist_ok=True)
 
-        file_id = "1Ld7oVZJ5XCFi6o8ZPZ0iM9vErvmQTmZu"
+        file_id = "1sZeQ45vGjq-7xx1RfLeoBDg_ZQqHmSWT"
 
         gdown.download(
             id=file_id,

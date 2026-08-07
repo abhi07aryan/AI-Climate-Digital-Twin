@@ -3,38 +3,44 @@ import numpy as np
 
 class ClimateScenario:
     """
-    Modify climate input variables before forecasting.
+    Apply climate change scenarios to an input sequence.
+
+    Sequence shape:
+        (window, channels, height, width)
     """
 
     def __init__(self, sequence):
-
-        # shape:
-        # (window, channels, H, W)
 
         self.sequence = sequence.copy()
 
     def increase_temperature(self, delta):
 
-        # channel 1 = Tmax
-        # channel 2 = Tmin
-
+        # Tmax
         self.sequence[:, 1] += delta
+
+        # Tmin
         self.sequence[:, 2] += delta
+
+        # Mean temperature
+        self.sequence[:, 3] += delta
 
         return self
 
     def decrease_temperature(self, delta):
 
-        self.sequence[:, 1] -= delta
-        self.sequence[:, 2] -= delta
-
-        return self
+        return self.increase_temperature(-delta)
 
     def multiply_rainfall(self, factor):
 
-        # channel 0 = rainfall
-
+        # Rainfall
         self.sequence[:, 0] *= factor
+
+        # Rolling rainfall
+        self.sequence[:, 5] *= factor
+        self.sequence[:, 6] *= factor
+
+        # Rain anomaly
+        self.sequence[:, 9] *= factor
 
         return self
 

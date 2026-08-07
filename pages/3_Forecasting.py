@@ -1,30 +1,32 @@
 from pathlib import Path
 
+from matplotlib.ticker import ScalarFormatter
+
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-
+import geopandas as gpd
 import streamlit as st
 import torch
 import xarray as xr
 import gdown
+import branca.colormap as cm
 
 from climate_twin.forecasting.recursive_forecast import RecursiveForecaster
 from climate_twin.models.convlstm import ConvLSTM
 from climate_twin.preprocessing.normalize import ClimateNormalizer
 from climate_twin.preprocessing.split import TimeSeriesSplit
 from climate_twin.ml.dataset import ClimateTorchDataset
-from matplotlib.ticker import ScalarFormatter
 from climate_twin.applications.flood import compute_flood_risk
 from climate_twin.applications.drought import compute_drought
 
-
-
+up = gpd.read_file("data/raw/shapefiles/UP_Boundary/UP_Boundary.shp")
+up = up.to_crs(epsg=4326)
 DATASET = Path("data/processed/climate_up_compressed.nc")
 def download_dataset():
     DATASET.parent.mkdir(parents=True, exist_ok=True)
 
-    file_id = "1Ld7oVZJ5XCFi6o8ZPZ0iM9vErvmQTmZu"
+    file_id = "11jqMmwyXjB0gxQpMvNdOx283-YrKJo9dq"
 
     gdown.download(
         id=file_id,
@@ -90,18 +92,16 @@ MC_SAMPLES = 30
 FEATURES = [
     "rainfall",
     "tmax",
-    "tmin"]
-#     "temp_mean",
-#     "temp_range",
-#     "rain_7day",
-#     "rain_lag1",
-#     "rain_lag3",
-#     "rain_lag7",
-#     "month",
-#     "season",
-#     "dayofyear",
-#     "rain_anomaly",
-# ]
+    "tmin",
+    "temp_mean",
+    "temp_range",
+    "rain_7day",
+    "rain_30day",
+    "month",
+    "season",
+    "dayofyear",
+    "rain_anomaly",
+]
 
 DEVICE = torch.device(
     "cuda"
@@ -274,7 +274,6 @@ def plot_map(data, title, cmap, vmin=None, vmax=None, center=None, label="", exp
             vmax=vmax
         )
     else:
-
         limit = max(abs(vmin), abs(vmax))
 
         im = ax.pcolormesh(
@@ -340,8 +339,8 @@ def plot_map(data, title, cmap, vmin=None, vmax=None, center=None, label="", exp
             file_name=filename,
             mime="image/png"
         )
-    return fig
 
+    return fig
 # ---------------------------------------------------------
 # Forecast Settings
 # ---------------------------------------------------------
@@ -429,12 +428,16 @@ X, y = dataset[sample]
 
 X = X.unsqueeze(0).to(DEVICE)
 
-truth = np.nan_to_num(
-    test_ds["rainfall"].isel(
-        time=sample + WINDOW_SIZE + forecast_day - 1
-    ).values,
-    nan=0.0
-)
+# ---------------------------------------------------------
+# Ground Truth
+# ---------------------------------------------------------
+
+truth = test_ds["rainfall"].isel(
+    time=sample + WINDOW_SIZE + forecast_day - 1
+).values
+
+# Mask of valid grid cells
+valid_mask = ~np.isnan(truth)
 
 # ---------------------------------------------------------
 # Monte Carlo Prediction
@@ -449,34 +452,41 @@ prediction, uncertainty, confidence = mc_predict(
     samples=mc_samples
 )
 
-difference = prediction - truth
-
-valid_mask = ~np.isnan(truth)
-
-difference_metric = (
-    prediction[valid_mask]
-    - truth[valid_mask]
-)
-
-rmse = np.sqrt(np.mean(difference_metric**2))
-mae = np.mean(np.abs(difference_metric))
+# ---------------------------------------------------------
+# Evaluation
+# ---------------------------------------------------------
 
 difference = prediction - truth
 
-if np.std(truth) == 0 or np.std(prediction) == 0:
+# Only valid grid cells
+prediction_valid = prediction[valid_mask]
+truth_valid = truth[valid_mask]
+difference_valid = difference[valid_mask]
+
+rmse = np.sqrt(np.mean(difference_valid ** 2))
+mae = np.mean(np.abs(difference_valid))
+
+if prediction_valid.size < 2:
     correlation = np.nan
 else:
     correlation = np.corrcoef(
-        truth.flatten(),
-        prediction.flatten()
+        truth_valid.ravel(),
+        prediction_valid.ravel()
     )[0, 1]
 
 confidence_interval = (
-    prediction.mean()
-    - 1.96 * uncertainty.mean(),
-    prediction.mean()
-    + 1.96 * uncertainty.mean()
+    prediction_valid.mean() - 1.96 * uncertainty[valid_mask].mean(),
+    prediction_valid.mean() + 1.96 * uncertainty[valid_mask].mean()
 )
+
+# ---------------------------------------------------------
+# Mask maps for plotting
+# ---------------------------------------------------------
+
+prediction  = np.ma.masked_where(~valid_mask, prediction)
+truth       = np.ma.masked_where(~valid_mask, truth)
+difference  = np.ma.masked_where(~valid_mask, difference)
+uncertainty = np.ma.masked_where(~valid_mask, uncertainty)
 
 # ---------------------------------------------------------
 # Forecast Summary
@@ -487,7 +497,7 @@ predicted_date = selected_date + timedelta(days=forecast_day - 1)
 st.subheader("Forecast Summary")
 
 c1, c2, c3, c4, c5, c6 = st.columns(6)
-
+p = normalizer.inverse_transform_array(prediction, "rainfall")
 c1.metric(
     "Forecast Date",
     str(selected_date)
@@ -505,7 +515,7 @@ c3.metric(
 
 c4.metric(
     "Average Rainfall",
-    f"{prediction.mean():.2f}"
+    f"{p.mean():.2f}"
 )
 
 c5.metric(
@@ -518,32 +528,10 @@ c6.metric(
     f"{rmse:.4f}"
 )
 
-forecast_tab, flood_tab, drought_tab = st.tabs(
-    [
-        "Rainfall Forecast",
-        "Flood Preparedness",
-        "Drought Monitoring"
-    ]
-)
 cmap = plt.cm.Blues.copy()
 cmap.set_bad(STREAMLIT_BG)
 
 cmap.set_bad(color=STREAMLIT_BG)
-
-rainfall = prediction
-flood = compute_flood_risk(truth, normalizer)
-tmax = X[0, -1, FEATURES.index("tmax")].cpu().numpy()
-tmin = X[0, -1, FEATURES.index("tmin")].cpu().numpy()
-drought = compute_drought(truth, tmax, tmin, normalizer)
-
-valid_mask = ~np.isnan(
-    test_ds["rainfall"].isel(time=0).values
-)
-
-prediction = np.ma.masked_where(~valid_mask, prediction)
-truth      = np.ma.masked_where(~valid_mask, truth)
-flood      = np.ma.masked_where(~valid_mask, flood)
-drought    = np.ma.masked_where(~valid_mask, drought)
 
 # ---------------------------------------------------------
 # Prediction Maps
@@ -561,152 +549,80 @@ vmax = max(
     np.nanmax(prediction)
 )
 
-
-with forecast_tab:
-
-    # ---------------------------------------------------------
-    # Ground Truth
-    # ---------------------------------------------------------
-
-    st.title("Climate Forecast")
-    col1, col2 = st.columns(2)
-
-    with col1:
-
-        st.subheader(f"Ground Truth (Day {forecast_day})")
-
-        fig = plot_map(
-            truth,
-            f"Observed Rainfall (Day {forecast_day})",
-            cmap=cmap,
-            vmin=vmin,
-            vmax=vmax,
-            label="mm/day",
-            export=True,
-            filename=f"ground_truth_day_{predicted_date}.png"
-        )
-
-        st.pyplot(fig)
-
-        plt.close(fig)
-
-    # ---------------------------------------------------------
-    # Mean Prediction
-    # ---------------------------------------------------------
-
-    with col2:
-
-        st.subheader(f"Prediction (Day {forecast_day})")
-
-        fig = plot_map(
-            prediction,
-            f"Predicted Rainfall (Day {forecast_day})",
-            cmap=cmap,
-            vmin=vmin,
-            vmax=vmax,
-            label="mm/day",
-            export=True,
-            filename=f"prediction_day_{predicted_date}.png"
-        )
-
-        st.pyplot(fig)
-
-        plt.close(fig)
-
-    # ---------------------------------------------------------
-    # Error & Uncertainty
-    # ---------------------------------------------------------
-
-    st.divider()
-
-    col3, col4 = st.columns(2)
-
-    # ---------------------------------------------------------
-    # Error Map
-    # ---------------------------------------------------------
-
-    with col3:
-
-        st.subheader("Prediction Error")
-
-        limit = np.nanmax(np.abs(difference))
-
-        fig = plot_map(
-            difference,
-            "Prediction Error",
-            cmap="RdBu_r",
-            vmin=-limit,
-            vmax=limit,
-            center=0,
-            label="mm/day",
-            export=True,
-            filename=f"difference_day_{predicted_date}.png"
-        )
-
-        st.pyplot(fig)
-
-        plt.close(fig)
-
-    # ---------------------------------------------------------
-    # Uncertainty
-    # ---------------------------------------------------------
-
-    with col4:
-
-        st.subheader("Prediction Uncertainty")
-
-        fig = plot_map(
-            uncertainty,
-            "Model Uncertainty",
-            cmap="inferno",
-            vmin=0,
-            vmax=np.nanmax(uncertainty),
-            label="Std. Dev.",
-            export=True,
-            filename=f"uncertainty_day_{predicted_date}.png"
-        )
-
-        st.pyplot(fig)
-        plt.close(fig)
-
-with flood_tab:
-
-    st.subheader("Flood Preparedness")
-    flood_min = np.nanmin(flood)
-    flood_max = np.nanmax(flood)
-
+# ---------------------------------------------------------
+# Ground Truth
+# ---------------------------------------------------------
+st.title("Climate Forecast")
+col1, col2 = st.columns(2)
+with col1:
+    st.subheader(f"Ground Truth (Day {forecast_day})")
     fig = plot_map(
-        flood,
-        "Flood Risk",
-        cmap="Reds",
-        vmin=flood_min,
-        vmax=flood_max,
-        label="Risk",
+        truth,
+        "Baseline",
+        cmap=cmap,
+        vmin=vmin,
+        vmax=vmax,
+        label="mm/day",
         export=True,
-        filename=f"flood_risk_day_{predicted_date}.png"
+        filename=f"truth_date_{forecast_day}.png"
     )
-
     st.pyplot(fig)
-    plt.close(fig)
-
-with drought_tab:
-
-    st.subheader("Drought Monitoring")
-    drought_min = np.nanmin(drought)
-    drought_max = np.nanmax(drought)
+    
+# ---------------------------------------------------------
+# Mean Prediction
+# ---------------------------------------------------------
+with col2:
+    st.subheader(f"Prediction (Day {forecast_day})")
     fig = plot_map(
-        drought,
-        "Drought Risk",
-        cmap="YlOrBr",
-        vmin=drought_min,
-        vmax=drought_max,
-        label="Risk",
+        prediction,
+        "Baseline",
+        cmap=cmap,
+        vmin=vmin,
+        vmax=vmax,
+        label="mm/day",
         export=True,
-        filename=f"drought_day_{predicted_date}.png"
+        filename=f"prediction_day_{predicted_date}.png"
     )
-
     st.pyplot(fig)
-    plt.close(fig)
+# ---------------------------------------------------------
+# Error & Uncertainty
+# ---------------------------------------------------------
+st.divider()
+col3, col4 = st.columns(2)
+# ---------------------------------------------------------
+# Error Map
+# ---------------------------------------------------------
+with col3:
+    st.subheader("Prediction Error")
+    limit = np.nanmax(np.abs(difference))
+    fig = plot_map(
+        difference,
+        "Prediction Error",
+        cmap="RdBu_r",
+        vmin=-limit,
+        vmax=limit,
+        label="mm/day",
+        export=True,
+        filename=f"prediction_error_{predicted_date}.png"
+    )
+    st.pyplot(fig)
+# ---------------------------------------------------------
+# Uncertainty
+# ---------------------------------------------------------
+with col4:
+    st.subheader("Prediction Uncertainty")
+    fig = plot_map(
+        uncertainty,
+        "Model Uncertainty",
+        cmap="inferno",
+        vmin=0,
+        vmax=np.nanmax(uncertainty),
+        label="Std. Dev.",
+        export=True,
+        filename=f"uncertainty_day_{predicted_date}.png"
+    )
+    st.pyplot(fig)
+
 
 # ---------------------------------------------------------
 # Evaluation Metrics
